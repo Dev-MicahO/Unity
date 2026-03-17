@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public class BattleManager : MonoBehaviour
 {
+
     public BattleState state;
 
     // Units
@@ -53,43 +54,59 @@ public class BattleManager : MonoBehaviour
 
     //Effects
     [Header("Hit Feedback")]
+    // How long a target shakes when hit
     public float shakeDuration = 0.2f;
+    // How much the target moves while shaking
     public float shakeMagnitude = 0.05f;
+    // How long the target flashes when hit
+
     public float flashDuration = 0.15f;
+    // The color the target flashes when hit (light red)
     public Color flashColor = new Color(1f, 0.7f, 0.7f, 1f);
 
     void Start()
     {
         Debug.Log("BattleManager started");
 
+        // Start both HP bars at full 
         playerTargetHPFill = 1f;
         enemyTargetHPFill = 1f;
 
+        // Set the first enemy to the zombie
         enemyUnit = zombieUnit;
 
+        // Show zombie at start, hide boss until needed
         zombieObject.SetActive(true);
         bossObject.SetActive(false);
 
+        // Shows the main action panel and disables buttons until setup is done
         ShowActionPanel();
         SetActionButtonsInteractable(false);
 
+        // Start the battle setup sequence
         state = BattleState.START;
         StartCoroutine(SetupBattle());
     }
 
+    // Spawns a floating damage number at a given world position
     void ShowDamagePopup(Transform damagePoint, int damage)
     {
+        // Convert the world position to a screen position for UI placement
         Vector3 screenPos = Camera.main.WorldToScreenPoint(damagePoint.position);
-
+        
+        // Create the popup under the battle canvas
         GameObject popupObj = Instantiate(damagePopupPrefab, battleCanvas.transform);
 
+        // Place the popup on screen
         RectTransform popupRect = popupObj.GetComponent<RectTransform>();
         popupRect.position = screenPos;
-
+       
+        // Pass the damage value into the popup script
         DamagePopup popup = popupObj.GetComponent<DamagePopup>();
         popup.Setup(damage);
     }
-
+   
+    // Makes a target briefly shake when hit    
     IEnumerator ShakeTarget(Transform target)
     {
         Vector3 originalPosition = target.localPosition;
@@ -105,10 +122,11 @@ public class BattleManager : MonoBehaviour
             elapsed += Time.deltaTime;
             yield return null;
         }
-
+        // Restore original position after shaking
         target.localPosition = originalPosition;
     }
-
+    
+    // Makes a sprite briefly flash a different color when hit
     IEnumerator FlashTarget(SpriteRenderer spriteRenderer)
     {
         if (spriteRenderer == null)
@@ -121,12 +139,16 @@ public class BattleManager : MonoBehaviour
 
         spriteRenderer.color = originalColor;
     }
-
+    
+    // Gets the SpriteRenderer from a Unit object
     SpriteRenderer GetUnitSpriteRenderer(Unit unit)
     {
         return unit.GetComponent<SpriteRenderer>();
     }
-
+    
+    /* Instantly updates both HP text and HP bar fill amounts
+       Used at battle start and during boss transition
+    */
     void RefreshHPUIImmediate()
     {
         UpdateHPText();
@@ -134,19 +156,22 @@ public class BattleManager : MonoBehaviour
         playerHPBarFill.fillAmount = playerTargetHPFill;
         enemyHPBarFill.fillAmount = enemyTargetHPFill;
     }
-
+   
+    // Shows the normal action panel and hides the skill panel
     void ShowActionPanel()
     {
         actionPanel.SetActive(true);
         skillPanel.SetActive(false);
     }
-
+    
+    // Shows the skill panel and hides the normal action panel
     void ShowSkillPanel()
     {
         actionPanel.SetActive(false);
         skillPanel.SetActive(true);
     }
-
+    
+    // Updates HP text and sets the target fill values for the HP bars
     void UpdateHPText()
     {
         playerHPText.text = playerUnit.unitName + " HP: " + playerUnit.currentHealth + "/" + playerUnit.maxHealth;
@@ -156,6 +181,7 @@ public class BattleManager : MonoBehaviour
         enemyTargetHPFill = (float)enemyUnit.currentHealth / enemyUnit.maxHealth;
     }
 
+    // Starts the second phase of battle by swapping from zombie to boss
     IEnumerator StartBossFight()
     {
         state = BattleState.BUSY;
@@ -166,13 +192,16 @@ public class BattleManager : MonoBehaviour
 
         battleText.text = "A stronger enemy approaches!";
         yield return new WaitForSeconds(1.5f);
-
+      
+        // Swap enemy from zombie to boss
         zombieObject.SetActive(false);
         bossObject.SetActive(true);
 
+        //Swap the current enemy reference to the boss unit
         enemyUnit = bossUnit;
         bossFightStarted = true;
 
+        //Refresh enemy HP UI for the boss
         RefreshHPUIImmediate();
 
         battleText.text = enemyUnit.unitName + " enters the battle!";
@@ -181,7 +210,8 @@ public class BattleManager : MonoBehaviour
         state = BattleState.PLAYERTURN;
         PlayerTurn();
     }
-
+    
+    // Handles the opening setup for the battle
     IEnumerator SetupBattle()
     {
         SetActionButtonsInteractable(false);
@@ -195,14 +225,16 @@ public class BattleManager : MonoBehaviour
         state = BattleState.PLAYERTURN;
         PlayerTurn();
     }
-
+    
+    // Starts the player's turn
     void PlayerTurn()
     {
         battleText.text = "Choose an action.";
         SetActionButtonsInteractable(true);
         ShowActionPanel();
     }
-
+    
+    // Enables or disables the main action buttons
     void SetActionButtonsInteractable(bool isInteractable)
     {
         attackButton.interactable = isInteractable;
@@ -210,7 +242,8 @@ public class BattleManager : MonoBehaviour
         skillButton.interactable = isInteractable;
         fleeButton.interactable = isInteractable;
     }
-
+    
+    // Called when the Attack button is pressed
     public void OnAttackButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -220,6 +253,7 @@ public class BattleManager : MonoBehaviour
         StartCoroutine(PlayerAttack());
     }
 
+    // Called when the Defend button is pressed
     public void OnDefendButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -228,7 +262,7 @@ public class BattleManager : MonoBehaviour
         SetActionButtonsInteractable(false);
         StartCoroutine(PlayerDefend());
     }
-
+    // Called when the Skill button is pressed
     public void OnSkillButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -237,7 +271,7 @@ public class BattleManager : MonoBehaviour
         ShowSkillPanel();
         battleText.text = "Choose a skill.";
     }
-
+    // Called when the Back button on the skill panel is pressed
     public void OnBackButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -246,7 +280,8 @@ public class BattleManager : MonoBehaviour
         ShowActionPanel();
         battleText.text = "Choose an action.";
     }
-
+    
+    // Called when the Flee button is pressed
     public void OnFleeButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -254,7 +289,8 @@ public class BattleManager : MonoBehaviour
 
         StartCoroutine(PlayerFlee());
     }
-
+    
+    // Called when the Power Strike skill button is pressed
     public void OnPowerStrikeButton()
     {
         if (state != BattleState.PLAYERTURN)
@@ -262,7 +298,8 @@ public class BattleManager : MonoBehaviour
 
         StartCoroutine(PlayerPowerStrike());
     }
-
+    
+    // Handles the player's normal attack
     IEnumerator PlayerAttack()
     {
         state = BattleState.BUSY;
@@ -280,7 +317,8 @@ public class BattleManager : MonoBehaviour
         battleText.text = "You attacked for " + damage + " damage!";
 
         yield return new WaitForSeconds(1.5f);
-
+         
+        // If zombie dies first, begin boss phase
         if (enemyUnit.IsDead())
         {
             if (!bossFightStarted)
@@ -289,6 +327,7 @@ public class BattleManager : MonoBehaviour
             }
             else
             {
+            // If boss dies, player wins ( you will not win >:) )
                 state = BattleState.WON;
                 EndBattle();
             }
@@ -299,7 +338,8 @@ public class BattleManager : MonoBehaviour
             StartCoroutine(EnemyTurn());
         }
     }
-
+    
+    // Handles defending for one enemy attack
     IEnumerator PlayerDefend()
     {
         state = BattleState.BUSY;
@@ -313,7 +353,8 @@ public class BattleManager : MonoBehaviour
         state = BattleState.ENEMYTURN;
         StartCoroutine(EnemyTurn());
     }
-
+    
+    // Handles fleeing from battle
     IEnumerator PlayerFlee()
     {
         state = BattleState.BUSY;
@@ -327,6 +368,7 @@ public class BattleManager : MonoBehaviour
         EndBattle();
     }
 
+    // Handles the Power Strike skill
     IEnumerator PlayerPowerStrike()
     {
         state = BattleState.BUSY;
@@ -367,7 +409,8 @@ public class BattleManager : MonoBehaviour
             StartCoroutine(EnemyTurn());
         }
     }
-
+    
+    // Handles the enemy's turn
     IEnumerator EnemyTurn()
     {
         state = BattleState.BUSY;
@@ -378,7 +421,8 @@ public class BattleManager : MonoBehaviour
 
         int damage = enemyUnit.GetDamage();
         bool blocked = false;
-
+        
+        // If the player defended, reduce the damage
         if (playerUnit.isDefending)
         {
             damage = Mathf.Max(1, damage / 2);
@@ -410,7 +454,8 @@ public class BattleManager : MonoBehaviour
             PlayerTurn();
         }
     }
-
+    
+    // Smoothly animates HP bars every frame toward their target values
     void Update()
     {
         playerHPBarFill.fillAmount = Mathf.Lerp(
@@ -425,6 +470,7 @@ public class BattleManager : MonoBehaviour
         );
     }
 
+    // Displays the correct final battle message and disables player input
     void EndBattle()
     {
         SetActionButtonsInteractable(false);

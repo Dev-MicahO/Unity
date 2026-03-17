@@ -1,5 +1,5 @@
 using UnityEngine;
-
+// Unit Script for both Player and Enemy, contains health, damage, and other stats. this is self explanatory.
 public class Unit : MonoBehaviour
 {
     public string unitName;
@@ -12,16 +12,19 @@ public class Unit : MonoBehaviour
 
     public bool isDefending = false;
 
+    // Initialize current health to max health at the start of the game
     void Awake()
     {
         currentHealth = maxHealth;
     }
     
+    // Returns a random damage value within the unit's damage range pow pow
     public int GetDamage()
     {
         return Random.Range(minDamage, maxDamage + 1);
     }
 
+    // oof
     public void TakeDamage(int damage)
     {
         currentHealth -= damage;
@@ -31,7 +34,8 @@ public class Unit : MonoBehaviour
             currentHealth = 0;
         }
     }
-
+   
+    // ded
     public bool IsDead()
     {
         return currentHealth <= 0;
