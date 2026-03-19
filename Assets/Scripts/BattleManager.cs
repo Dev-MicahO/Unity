@@ -12,11 +12,13 @@ public class BattleManager : MonoBehaviour
     public Unit enemyUnit;
     public Unit zombieUnit;
     public Unit bossUnit;
+    public Unit wifeUnit;
 
     // Battle Text
     public TextMeshProUGUI battleText;
     public TextMeshProUGUI playerHPText;
     public TextMeshProUGUI enemyHPText;
+    public TextMeshProUGUI wifeHPText;
     public TextMeshProUGUI playerSPText;
     public TextMeshProUGUI shoulderBashButtonText;
     public TextMeshProUGUI allOutAttackButtonText;
@@ -24,10 +26,13 @@ public class BattleManager : MonoBehaviour
 
     // HP Bars and SP Bars
     public Image playerHPBarFill;
+    public Image wifeHPBarFill;
     public Image enemyHPBarFill;
     public Image playerSPBarFill;
+
     private float playerTargetHPFill;
     private float enemyTargetHPFill;
+    private float wifeTargetHPFill;
     private float playerTargetSPFill;
     public float hpBarSpeed = 2f;
 
@@ -52,6 +57,7 @@ public class BattleManager : MonoBehaviour
     // Damage Popup Points
     public Transform playerDamagePoint;
     public Transform enemyDamagePoint;
+    public Transform wifeDamagePoint;
 
     // Canvas
     public Canvas battleCanvas;
@@ -148,6 +154,7 @@ public class BattleManager : MonoBehaviour
 
         // Start both HP bars at full
         playerTargetHPFill = 1f;
+        wifeTargetHPFill = 1f;
         enemyTargetHPFill = 1f;
 
         // Start SP at max as well
@@ -380,36 +387,51 @@ public class BattleManager : MonoBehaviour
         }
         else
         {
-            state = BattleState.ENEMYTURN;
-            StartCoroutine(EnemyTurn());
+            if (!wifeUnit.IsDead())
+            {
+                state = BattleState.BUSY;
+                StartCoroutine(WifeTurn());
+            }
+            else
+            {
+                state = BattleState.ENEMYTURN;
+                StartCoroutine(EnemyTurn());
+            }
         }
     }
 
-    /* Applies damage to the player and triggers hit feedback
-    Different boss moves modify visuals:
-    - Lunge → stronger shake
-    - Bite → green flash
+    /*
+    Applies damage to a party member (player OR wife) and triggers hit feedback.
+    
+    Includes:
+    - Damage application
+    - Shake effects (stronger for boss Lunge)
+    - Flash effects (green for Bite, normal otherwise)
+    - Damage popup (supports crit color)
+    - HP UI update
+    
+    This replaces the old DamagePlayer() and allows enemies to target multiple allies.
     */
-    void DamagePlayer(int damage, string bossMoveType, bool isCritical = false)
+    void DamageAlly(Unit target, int damage, string bossMoveType, bool isCritical = false)
     {
-        playerUnit.TakeDamage(damage);
+        target.TakeDamage(damage);
 
         if (bossMoveType == "Lunge")
-            StartCoroutine(ShakeTargetCustom(playerUnit.transform, 0.5f, 0.2f));
+            StartCoroutine(ShakeTargetCustom(target.transform, 0.5f, 0.2f));
         else
-            StartCoroutine(ShakeTarget(playerUnit.transform));
+            StartCoroutine(ShakeTarget(target.transform));
 
         if (bossMoveType == "Bite")
-            StartCoroutine(
-                FlashTargetColor(GetUnitSpriteRenderer(playerUnit), infectedBiteFlashColor)
-            );
+            StartCoroutine(FlashTargetColor(GetUnitSpriteRenderer(target), infectedBiteFlashColor));
         else
-            StartCoroutine(FlashTarget(GetUnitSpriteRenderer(playerUnit)));
+            StartCoroutine(FlashTarget(GetUnitSpriteRenderer(target)));
+
+        Transform damagePoint = GetDamagePointForAlly(target);
 
         if (isCritical)
-            ShowDamagePopup(playerDamagePoint, damage, "-", criticalDamageColor);
+            ShowDamagePopup(damagePoint, damage, "-", criticalDamageColor);
         else
-            ShowDamagePopup(playerDamagePoint, damage);
+            ShowDamagePopup(damagePoint, damage);
 
         UpdateHPText();
     }
@@ -496,6 +518,7 @@ public class BattleManager : MonoBehaviour
         UpdateSPUI();
 
         playerHPBarFill.fillAmount = playerTargetHPFill;
+        wifeHPBarFill.fillAmount = wifeTargetHPFill;
         enemyHPBarFill.fillAmount = enemyTargetHPFill;
         playerSPBarFill.fillAmount = playerTargetSPFill;
     }
@@ -538,6 +561,8 @@ public class BattleManager : MonoBehaviour
     {
         playerHPText.text =
             playerUnit.unitName + " HP: " + playerUnit.currentHealth + "/" + playerUnit.maxHealth;
+        wifeHPText.text =
+            wifeUnit.unitName + " HP: " + wifeUnit.currentHealth + "/" + wifeUnit.maxHealth;
         enemyHPText.text =
             enemyUnit.unitName + " HP: " + enemyUnit.currentHealth + "/" + enemyUnit.maxHealth;
 
@@ -629,14 +654,28 @@ public class BattleManager : MonoBehaviour
     */
     IEnumerator BeginPlayerTurn()
     {
+        if (playerUnit.IsDead())
+        {
+            StartCoroutine(WifeTurn());
+            yield break;
+        }
+
         if (playerBleeding)
         {
             yield return StartCoroutine(ApplyBleedEffect());
 
             if (playerUnit.IsDead())
             {
-                state = BattleState.LOST;
-                EndBattle();
+                if (IsPartyDefeated())
+                {
+                    state = BattleState.LOST;
+                    EndBattle();
+                }
+                else
+                {
+                    StartCoroutine(WifeTurn());
+                }
+
                 yield break;
             }
         }
@@ -715,8 +754,7 @@ public class BattleManager : MonoBehaviour
         SetBattleText(enemyUnit.unitName + " is stunned and cannot move!");
         yield return new WaitForSeconds(1f);
 
-        state = BattleState.PLAYERTURN;
-        PlayerTurn();
+        StartNextAllyPhase();
     }
 
     /* Handles what happens after the enemy attacks:
@@ -727,16 +765,7 @@ public class BattleManager : MonoBehaviour
     {
         yield return new WaitForSeconds(1.5f);
 
-        if (playerUnit.IsDead())
-        {
-            state = BattleState.LOST;
-            EndBattle();
-        }
-        else
-        {
-            state = BattleState.PLAYERTURN;
-            PlayerTurn();
-        }
+        StartNextAllyPhase();
     }
 
     // Reduces remaining Rage duration after an attack -> Disables Rage when duration expires
@@ -750,6 +779,92 @@ public class BattleManager : MonoBehaviour
         if (rageTurnsRemaining <= 0)
         {
             playerRageActive = false;
+        }
+    }
+
+    /*
+    Checks if the entire player party has been defeated.
+    Returns true only if BOTH the player and the companion (wife) are dead.
+    
+    Used to determine if the battle should end in a loss.
+    */
+    bool IsPartyDefeated()
+    {
+        return playerUnit.IsDead() && wifeUnit.IsDead();
+    }
+
+    /*
+    Shorya's code to have an enemy pick a random target Nice work man!
+    Selects a random valid target from the player's party.
+
+    - If both player and wife are alive → randomly picks one
+    - If only one is alive → returns that one
+    - If both are dead → returns null
+    Used by EnemyTurn() to determine who gets attacked.
+    */
+    Unit GetRandomLivingAlly()
+    {
+        bool playerAlive = !playerUnit.IsDead();
+        bool wifeAlive = !wifeUnit.IsDead();
+
+        if (playerAlive && wifeAlive)
+        {
+            return Random.Range(0, 2) == 0 ? playerUnit : wifeUnit;
+        }
+        else if (playerAlive)
+        {
+            return playerUnit;
+        }
+        else if (wifeAlive)
+        {
+            return wifeUnit;
+        }
+
+        return null; // Both are dead, should not happen if we check before calling
+    }
+
+    /*
+    Returns the correct damage popup position for the given ally.
+    
+    - Player → playerDamagePoint
+    - Wife → wifeDamagePoint
+    
+    Ensures damage numbers appear in the correct location on screen.
+    */
+    Transform GetDamagePointForAlly(Unit target)
+    {
+        if (target == wifeUnit)
+            return wifeDamagePoint;
+
+        return playerDamagePoint;
+    }
+
+    /*
+    Handles transition back to the player's side after the enemy finishes its turn.
+
+    - If both allies are dead → end battle (LOSS)
+    - If player is dead but wife is alive → skip player turn and go to WifeTurn()
+    - Otherwise → start normal PlayerTurn()
+
+    */
+    void StartNextAllyPhase()
+    {
+        if (IsPartyDefeated())
+        {
+            state = BattleState.LOST;
+            EndBattle();
+            return;
+        }
+
+        if (playerUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.PLAYERTURN;
+            PlayerTurn();
         }
     }
 
@@ -808,7 +923,7 @@ public class BattleManager : MonoBehaviour
     {
         if (state != BattleState.PLAYERTURN)
             return;
-        
+
         // Stop trying to be a pussy.
         if (bossFightStarted)
         {
@@ -903,8 +1018,16 @@ public class BattleManager : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
-        state = BattleState.ENEMYTURN;
-        StartCoroutine(EnemyTurn());
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
     }
 
     // Ends the battle immediately (Pussy)
@@ -1030,11 +1153,103 @@ public class BattleManager : MonoBehaviour
         SetBattleText(playerUnit.unitName + "'s strength surges!");
         yield return new WaitForSeconds(1.0f);
 
-        state = BattleState.ENEMYTURN;
-        StartCoroutine(EnemyTurn());
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
     }
 
     // ===================================
+
+    /*
+    Handles the wife's automatic turn.
+    
+    Behavior:
+    - Skips turn if wife is dead
+    - Attacks enemy automatically
+    - Can crit using player crit stats (for now)
+    - Can exploit boss defense break (Agonized Lunge)
+    
+    After attacking:
+    - If enemy dies → resolve victory or boss phase
+    - Otherwise → proceed to EnemyTurn()
+    
+    This runs between PlayerTurn() and EnemyTurn().
+    */
+    IEnumerator WifeTurn()
+    {
+        state = BattleState.BUSY;
+
+        if (wifeUnit.IsDead())
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+            yield break;
+        }
+
+        SetBattleText(wifeUnit.unitName + " attacks!");
+        yield return new WaitForSeconds(0.5f);
+
+        bool exploitedOpening = false;
+        bool isCritical = false;
+
+        int damage = wifeUnit.GetDamage();
+
+        if (bossFightStarted && enemyUnit == bossUnit && bossDefenseLowered)
+        {
+            damage += 5;
+            bossDefenseLowered = false;
+            exploitedOpening = true;
+        }
+
+        damage = ApplyCriticalHit(
+            damage,
+            playerCritChancePercent,
+            playerCritMultiplier,
+            out isCritical
+        );
+
+        DamageEnemy(damage, isCritical);
+
+        string wifeMessage;
+
+        if (exploitedOpening && isCritical)
+            wifeMessage ="Critical hit! " + wifeUnit.unitName + " exploited the opening for " + damage + " damage!";
+        else if (exploitedOpening)
+            wifeMessage = wifeUnit.unitName + " exploited the opening for " + damage + " damage!";
+        else if (isCritical)
+            wifeMessage = "Critical hit! " + wifeUnit.unitName + " dealt " + damage + " damage!";
+        else
+            wifeMessage = wifeUnit.unitName + " dealt " + damage + " damage!";
+
+        SetBattleText(wifeMessage);
+
+        yield return new WaitForSeconds(1.5f);
+
+        if (enemyUnit.IsDead())
+        {
+            if (!bossFightStarted)
+            {
+                StartCoroutine(StartBossFight());
+            }
+            else
+            {
+                state = BattleState.WON;
+                EndBattle();
+            }
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
 
     /*
     Handles enemy behavior each turn:
@@ -1071,6 +1286,7 @@ public class BattleManager : MonoBehaviour
             attackName = "Enemy attacks!";
             damage = enemyUnit.GetDamage();
         }
+
         damage = ApplyCriticalHit(
             damage,
             enemyCritChancePercent,
@@ -1081,39 +1297,53 @@ public class BattleManager : MonoBehaviour
         SetBattleText(attackName);
         yield return new WaitForSeconds(0.5f);
 
-        if (playerUnit.isDefending)
+        Unit target = GetRandomLivingAlly();
+
+        if (target == null)
+        {
+            state = BattleState.LOST;
+            EndBattle();
+            yield break;
+        }
+
+        if (target == playerUnit && playerUnit.isDefending)
         {
             damage = Mathf.Max(1, damage / 2);
             playerUnit.isDefending = false;
             blocked = true;
         }
 
-        DamagePlayer(damage, bossMoveType, isCritical);
+        DamageAlly(target, damage, bossMoveType, isCritical);
 
         if (blocked)
         {
             if (isCritical)
-                SetBattleText(
-                    "You blocked part of a critical hit! Enemy dealt " + damage + " damage!"
-                );
+                SetBattleText(target.unitName + " blocked part of a critical hit! Enemy dealt "+ damage + " damage!");
             else
-                SetBattleText("You blocked part of the damage! Enemy dealt " + damage + " damage!");
+                SetBattleText(target.unitName+ " blocked part of the damage! Enemy dealt " + damage + " damage!");
         }
         else if (bossMoveType == "Bite")
         {
             if (isCritical)
-                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage!");
+                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
             else
-                SetBattleText(attackName + " It dealt " + damage + " damage!");
+                SetBattleText(attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
             yield return new WaitForSeconds(1f);
 
-            int bleedRoll = Random.Range(1, 101);
-
-            if (bleedRoll <= bleedChancePercent)
+            if (target == playerUnit)
             {
-                playerBleeding = true;
-                bleedTurnsRemaining = bleedDuration;
-                SetBattleText(playerUnit.unitName + " starts bleeding!");
+                int bleedRoll = Random.Range(1, 101);
+
+                if (bleedRoll <= bleedChancePercent)
+                {
+                    playerBleeding = true;
+                    bleedTurnsRemaining = bleedDuration;
+                    SetBattleText(playerUnit.unitName + " starts bleeding!");
+                }
+                else
+                {
+                    SetBattleText("The wound looks nasty...");
+                }
             }
             else
             {
@@ -1125,9 +1355,9 @@ public class BattleManager : MonoBehaviour
         else if (bossMoveType == "Lunge")
         {
             if (isCritical)
-                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage!");
+                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
             else
-                SetBattleText(attackName + " It dealt " + damage + " damage!");
+                SetBattleText(attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
             yield return new WaitForSeconds(1f);
             SetBattleText(enemyUnit.unitName + "'s guard is lowered!");
             yield return new WaitForSeconds(0.5f);
@@ -1135,9 +1365,11 @@ public class BattleManager : MonoBehaviour
         else
         {
             if (isCritical)
-                SetBattleText("Critical hit!\n" + attackName + "\nIt dealt " + damage + " damage.");
+                SetBattleText("Critical hit!\n" + attackName+ "\nIt dealt " + damage + " damage to " + target.unitName + ".");
             else
-                SetBattleText(attackName + "\nIt dealt " + damage + " damage.");
+                SetBattleText(
+                    attackName + "\nIt dealt " + damage + " damage to " + target.unitName + "."
+                );
         }
 
         yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
@@ -1146,23 +1378,10 @@ public class BattleManager : MonoBehaviour
     // Smoothly animates HP bars every frame toward their target values
     void Update()
     {
-        playerHPBarFill.fillAmount = Mathf.Lerp(
-            playerHPBarFill.fillAmount,
-            playerTargetHPFill,
-            Time.deltaTime * hpBarSpeed
-        );
-
-        enemyHPBarFill.fillAmount = Mathf.Lerp(
-            enemyHPBarFill.fillAmount,
-            enemyTargetHPFill,
-            Time.deltaTime * hpBarSpeed
-        );
-
-        playerSPBarFill.fillAmount = Mathf.Lerp(
-            playerSPBarFill.fillAmount,
-            playerTargetSPFill,
-            Time.deltaTime * hpBarSpeed
-        );
+        playerHPBarFill.fillAmount = Mathf.Lerp(playerHPBarFill.fillAmount,playerTargetHPFill,Time.deltaTime * hpBarSpeed);
+        wifeHPBarFill.fillAmount = Mathf.Lerp(wifeHPBarFill.fillAmount,wifeTargetHPFill,Time.deltaTime * hpBarSpeed);
+        enemyHPBarFill.fillAmount = Mathf.Lerp(enemyHPBarFill.fillAmount,enemyTargetHPFill,Time.deltaTime * hpBarSpeed);
+        playerSPBarFill.fillAmount = Mathf.Lerp(playerSPBarFill.fillAmount,playerTargetSPFill,Time.deltaTime * hpBarSpeed);
     }
 
     // Finalizes battle state and displays result message --> Disables all player input
