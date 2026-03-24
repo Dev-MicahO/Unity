@@ -4,12 +4,17 @@ using UnityEngine.InputSystem;
 public class Pause : MonoBehaviour
 {
 
+    // pause menu panels
     public GameObject pauseMenu;
     public GameObject settingsMenu;
 
+    // player control system to enable use of keys
     private PlayerControls controls;
+
+    // boolean to keep track of the paused state
     private bool isPaused = false;
 
+    // allows you to use key presses to close menus
     void Awake()
     {
         controls = new PlayerControls();
@@ -36,6 +41,7 @@ public class Pause : MonoBehaviour
         controls.Disable();
     }
 
+    // toggles between the paused and unpaused state
     public void TogglePause()
     {
         isPaused = !isPaused;
@@ -46,18 +52,21 @@ public class Pause : MonoBehaviour
         Cursor.visible = isPaused;
     }
 
+    // toggles the settings panel on
     public void OpenSettings()
     {
         pauseMenu.SetActive(false);
         settingsMenu.SetActive(true);
     }
 
+    // toggles the settings panel off
     public void CloseSettings()
     {
         settingsMenu.SetActive(false);
         pauseMenu.SetActive(true);
     }
 
+    // disables all menu panels and returns the time to normal rate
     public void ResumeGame()
     {
         isPaused = false;
