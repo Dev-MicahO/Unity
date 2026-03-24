@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 public class BattleManager : MonoBehaviour
 {
@@ -15,6 +16,12 @@ public class BattleManager : MonoBehaviour
     public Unit bossUnit;
     public Unit wifeUnit;
 
+   // Sprites  
+    [Header("Player Sprites")]
+    public SpriteRenderer playerSpriteRenderer;
+    public Sprite playerNormalSprite;
+    public Sprite playerBlockingSprite;
+
     // Battle Text
     public TextMeshProUGUI battleText;
     public TextMeshProUGUI playerHPText;
@@ -25,6 +32,17 @@ public class BattleManager : MonoBehaviour
     public TextMeshProUGUI allOutAttackButtonText;
     public TextMeshProUGUI rageButtonText;
     public TextMeshProUGUI dialogueText;
+
+    // Typewriter effect for Dialogue
+    [Header("Dialogue Typewriter")]
+    public float dialogueTypeSpeed = 0.06f;
+    private Coroutine activeTypingCoroutine;
+
+    // Skip Intro Function
+    private bool skipIntroRequested = false;
+    private bool isInIntro = false;
+
+
 
     // HP Bars and SP Bars
     public Image playerHPBarFill;
@@ -48,6 +66,7 @@ public class BattleManager : MonoBehaviour
     public Button shoulderBashButton;
     public Button allOutAttackButton;
     public Button rageButton;
+    public Button backButton;
 
     // Panels / UI
     public GameObject damagePopupPrefab;
@@ -58,6 +77,7 @@ public class BattleManager : MonoBehaviour
     public GameObject bossObject;
     public GameObject wifeObject;
     public GameObject wifeUIObject;
+    public GameObject skipHint;
 
     // Damage Popup Points
     public Transform playerDamagePoint;
@@ -114,6 +134,12 @@ public class BattleManager : MonoBehaviour
     public int agonizedLungeMinDamage = 22;
     public int agonizedLungeMaxDamage = 30;
 
+    // Random Encounter
+    private bool isRandomEncounterBattle = false;
+
+    // Tutorial
+    private int tutorialStep = 0;
+
     // Player status effects
     private bool playerBleeding = false;
     private int bleedTurnsRemaining = 0;
@@ -155,9 +181,19 @@ public class BattleManager : MonoBehaviour
     // Popup Color for bleed damage (Dark Red)
     public Color bleedDamageColor = new Color(0.65f, 0f, 0f, 1f);
 
+    // Cheats
+    [Header("Debug")]
+    private bool debugMaxDamage = false;
+
+    // Original values to restore later
+    private int originalMinDamage;
+    private int originalMaxDamage;
+
+
+
     void Start()
     {
-        Debug.Log("BattleManager started");
+        Debug.Log("BattleManager Start called");
 
         // Start both HP bars at full
         playerTargetHPFill = 1f;
@@ -175,7 +211,7 @@ public class BattleManager : MonoBehaviour
         zombieObject.SetActive(true);
         zombie2Object.SetActive(false);
         bossObject.SetActive(false);
-        // Wife is visible during the first phase as a companion, then becomes the boss in the second phase. So we start her hidden, then show her during the transition, then hide her again when she becomes the boss.
+        // Wife is visible during the first phase as a companion, then becomes the boss in the second phase.
         wifeObject.SetActive(true);
         wifeUIObject.SetActive(true);
 
@@ -183,15 +219,47 @@ public class BattleManager : MonoBehaviour
         ShowActionPanel();
         SetActionButtonsInteractable(false);
 
-        // Initialize transition UI (used for boss intro)
-        transitionOverlay.alpha = 0f;
-        transitionOverlay.blocksRaycasts = false;
+        originalMinDamage = playerUnit.minDamage;
+        originalMaxDamage = playerUnit.maxDamage;
+
+        // Initialize transition UI (used for boss intro and Intro dialogue)
+        transitionOverlay.alpha = 1f;
+        transitionOverlay.blocksRaycasts = true;
         dialogueText.text = "";
         dialogueText.gameObject.SetActive(false);
+        activeTypingCoroutine = null;
+        skipHint.SetActive(false);
 
         // Start the battle setup sequence
         state = BattleState.START;
-        StartCoroutine(SetupBattle());
+        if (GameSession.Instance != null)
+        {
+            isRandomEncounterBattle = GameSession.Instance.isRandomEncounter;
+        }
+
+        if (isRandomEncounterBattle)
+        {
+            SetupRandomEncounterBattle();
+        }
+        else
+        {
+            StartCoroutine(PlayIntroDialogue());
+        }
+    }
+    void SetPlayerBlockingSprite()
+    {
+        if (playerSpriteRenderer != null && playerBlockingSprite != null)
+        {
+            playerSpriteRenderer.sprite = playerBlockingSprite;
+        }
+    }
+
+    void SetPlayerNormalSprite()
+    {
+        if (playerSpriteRenderer != null && playerNormalSprite != null)
+        {
+            playerSpriteRenderer.sprite = playerNormalSprite;
+        }
     }
 
     // Spawns a floating damage number at a given world position
@@ -258,12 +326,7 @@ public class BattleManager : MonoBehaviour
     }
 
     // He he boiah we getting real critty
-    int ApplyCriticalHit(
-        int baseDamage,
-        int critChancePercent,
-        float critMultiplier,
-        out bool isCritical
-    )
+    int ApplyCriticalHit(int baseDamage,int critChancePercent,float critMultiplier,out bool isCritical)
     {
         int critRoll = Random.Range(1, 101);
         isCritical = critRoll <= critChancePercent;
@@ -392,6 +455,14 @@ public class BattleManager : MonoBehaviour
 
         if (enemyUnit.IsDead())
         {
+            // RANDOM ENCOUNTER END
+            if (isRandomEncounterBattle)
+            {
+                state = BattleState.WON;
+                StartCoroutine(ReturnToOverworldAfterBattle());
+                yield break;
+            }
+
             // Zombie 1 dies -> bring in Zombie 2
             if (!zombie2Spawned && enemyUnit == zombieUnit)
             {
@@ -406,7 +477,7 @@ public class BattleManager : MonoBehaviour
             else
             {
                 state = BattleState.WON;
-                EndBattle();
+                StartCoroutine(EndBattle());
             }
         }
         else
@@ -580,7 +651,7 @@ public class BattleManager : MonoBehaviour
         battleText.text = message;
     }
 
-    // Handles fading in/out the transition overlay used for the boss intro sequence. 
+    // Handles fading in/out the transition overlay used for the boss intro sequence.
     // Fades to a target alpha over a given duration and optionally blocks raycasts to prevent player input during transitions.
     IEnumerator FadeOverlay(float targetAlpha, float duration)
     {
@@ -603,11 +674,36 @@ public class BattleManager : MonoBehaviour
             transitionOverlay.blocksRaycasts = false;
         }
     }
-    // Displays a dialogue message during transitions (like the boss intro) for a specified duration. Shows the dialogue text, waits, then can be hidden by the caller after the transition is complete.
+
+   // New method for a typewriter effect
+    IEnumerator TypeDialogue(string message)
+    {
+        dialogueText.text = "";
+
+        foreach (char letter in message)
+        {
+            dialogueText.text += letter;
+            yield return new WaitForSeconds(dialogueTypeSpeed);
+        }
+
+        activeTypingCoroutine = null;
+    }
+// Displays a dialogue message during transitions (like the boss intro) for a specified duration. Shows the dialogue text, waits, then can be hidden by the caller after the transition is complete.
     IEnumerator ShowTransitionDialogue(string message, float duration)
     {
         dialogueText.gameObject.SetActive(true);
-        dialogueText.text = message;
+
+        if (activeTypingCoroutine != null)
+        {
+            StopCoroutine(activeTypingCoroutine);
+            activeTypingCoroutine = null;
+        }
+
+        dialogueText.text = "";
+
+        activeTypingCoroutine = StartCoroutine(TypeDialogue(message));
+        yield return activeTypingCoroutine;
+
         yield return new WaitForSeconds(duration);
     }
 
@@ -669,7 +765,8 @@ public class BattleManager : MonoBehaviour
 
         StartNextAllyPhase();
     }
-    // Handles the transition sequence when the wife becomes the boss. 
+
+    // Handles the transition sequence when the wife becomes the boss.
     // This includes fading to black, showing dialogue about the transformation, swapping visuals from the tutorial phase to the boss fight, and then fading back in to start the boss fight.
     IEnumerator PlayBossTransition()
     {
@@ -685,13 +782,10 @@ public class BattleManager : MonoBehaviour
         wifeUIObject.SetActive(false);
 
         // Show dialogue
-        yield return StartCoroutine(
-            ShowTransitionDialogue(wifeUnit.unitName + " doesn't look well...", 1.5f)
-        );
-        yield return StartCoroutine(ShowTransitionDialogue("Her breathing grows ragged.", 1.5f));
-        yield return StartCoroutine(ShowTransitionDialogue("The infection takes hold.", 1.5f));
-        yield return StartCoroutine(
-            ShowTransitionDialogue(wifeUnit.unitName + " turns on you.", 1.5f)
+        yield return StartCoroutine(ShowTransitionDialogue(wifeUnit.unitName + " doesn't look well...", 2.5f));
+        yield return StartCoroutine(ShowTransitionDialogue("Her breathing grows ragged.", 2.5f));
+        yield return StartCoroutine(ShowTransitionDialogue("The infection takes hold.", 2.5f));
+        yield return StartCoroutine( ShowTransitionDialogue(wifeUnit.unitName + " turns on you.", 2.5f)
         );
 
         // Clear dialogue before fade-in
@@ -718,11 +812,86 @@ public class BattleManager : MonoBehaviour
 
         StartNextAllyPhase();
     }
+    
+    bool ShouldSkipIntro()
+    {
+        return skipIntroRequested;
+    }
 
     // Starts the second phase of battle by swapping from zombie to boss (This is handled by PlayBossTransition Now)
     IEnumerator StartBossFight()
     {
-       yield return StartCoroutine(PlayBossTransition());
+        yield return StartCoroutine(PlayBossTransition());
+    }
+
+    // The Intro Dialogue
+
+    IEnumerator PlayIntroDialogue()
+    {
+        state = BattleState.BUSY;
+        SetActionButtonsInteractable(false);
+        skipHint.SetActive(true);
+
+        isInIntro = true;
+        skipIntroRequested = false;
+
+        // Fade to black
+        yield return StartCoroutine(FadeOverlay(1f, 1f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return new WaitForSeconds(0.2f);
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("I just dropped off my kid at school...", 2f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("And it was a Beautiful Day.", 2f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("But then... the event happens...", 1.5f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("WELCOME", 2.5f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("TO", 2.5f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        yield return StartCoroutine(ShowTransitionDialogue("SUPER ZOMBACHUSETTS:\n WIFEHUNT 3\n \"THE THIRD EPIC SQUEAKEL\"\n THE RECKONING\n YOU WILL NOT SURVIVE\n 'ADVANCED WARFARE 2' TM ", 2.5f));
+        if (ShouldSkipIntro()) goto SKIP;
+
+        dialogueText.text = "";
+
+        yield return StartCoroutine(FadeOverlay(0f, 1f));
+        dialogueText.gameObject.SetActive(false);
+        skipHint.SetActive(false);
+
+        isInIntro = false;
+        yield return StartCoroutine(SetupBattle());
+        yield break;
+
+    SKIP:
+
+        Debug.Log("Intro skipped");
+
+        // Stop typing if active
+        if (activeTypingCoroutine != null)
+        {
+            StopCoroutine(activeTypingCoroutine);
+            activeTypingCoroutine = null;
+        }
+
+        dialogueText.text = "";
+        dialogueText.gameObject.SetActive(false);
+        skipHint.SetActive(false);
+
+        // Immediately fade out overlay
+        transitionOverlay.alpha = 0f;
+        transitionOverlay.blocksRaycasts = false;
+
+        isInIntro = false;
+
+        yield return StartCoroutine(SetupBattle());
     }
 
     // Handles the opening setup for the battle
@@ -733,10 +902,48 @@ public class BattleManager : MonoBehaviour
         SetBattleText("A zombie appears!");
         RefreshBattleUIImmediate();
 
+        tutorialStep = 0;
+
         yield return new WaitForSeconds(2f);
 
         state = BattleState.PLAYERTURN;
         PlayerTurn();
+    }
+
+    // Method to setup a random encounter battle with just a zombie
+    void SetupRandomEncounterBattle()
+    {
+        Debug.Log("Starting random encounter battle");
+
+        transitionOverlay.alpha = 0f;
+        transitionOverlay.blocksRaycasts = false;
+        dialogueText.gameObject.SetActive(false);
+        activeTypingCoroutine = null;
+        skipHint.SetActive(false);
+
+        state = BattleState.PLAYERTURN;
+
+        // Disable wife completely
+        wifeObject.SetActive(false);
+        wifeUIObject.SetActive(false);
+
+        // Only one zombie
+        zombieObject.SetActive(true);
+        zombie2Object.SetActive(false);
+        bossObject.SetActive(false);
+
+        enemyUnit = zombieUnit;
+
+        // Reset SP
+        playerCurrentSP = playerMaxSP;
+        playerTargetSPFill = 1f;
+
+        // Reset UI
+        RefreshBattleUIImmediate();
+
+        SetBattleText("A zombie appears!");
+        ShowActionPanel();
+        SetActionButtonsInteractable(true);
     }
 
     /* Begins the player's turn:
@@ -772,7 +979,7 @@ public class BattleManager : MonoBehaviour
                 if (IsPartyDefeated())
                 {
                     state = BattleState.LOST;
-                    EndBattle();
+                    StartCoroutine(EndBattle());
                 }
                 else
                 {
@@ -792,8 +999,52 @@ public class BattleManager : MonoBehaviour
     // Enables player input after all start-of-turn effects are resolved dont ask why theres 3 player methods it was to help cleanup the spam of code in PlayerTurn and make it easier to read and manage overall
     void StartPlayerInputPhase()
     {
-        SetBattleText("Choose an action.");
         SetActionButtonsInteractable(true);
+        backButton.interactable = true;
+
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit)
+        {
+            // First part of tutorial Explain Attack Button
+            if (tutorialStep == 0)
+            {
+                SetBattleText("Tutorial:Use your basic attack to fight the zombie!");
+                defendButton.interactable = false;
+                skillButton.interactable = false;
+                fleeButton.interactable = false;
+                return;
+            }
+            // Second Part of the tutorial Explain Defend Button
+            if (tutorialStep == 1)
+            {
+                SetBattleText("Tutorial: Use the defend button to take less damage for a turn.");
+                attackButton.interactable = false;
+                skillButton.interactable = false;
+                fleeButton.interactable = false;
+                return;
+            }
+            //Third Part of the tutorial Explain Skills and SP
+            if (tutorialStep == 2)
+            {
+                SetBattleText("Tutorial: SP is required to use skills and regenerates each turn, Try opening the skills panel!");
+                attackButton.interactable = false;
+                defendButton.interactable = false;
+                skillButton.interactable = true;
+                fleeButton.interactable = false;
+                return;
+            }
+
+            //Fourth Part of the tutorial explain Flee button and end
+            if (tutorialStep == 3)
+            {
+                SetBattleText("Tutorial: Try to flee.");
+                attackButton.interactable = false;
+                defendButton.interactable = false;
+                skillButton.interactable = false;
+                fleeButton.interactable = true;
+                return;
+            }
+            SetBattleText("Choose an action.");
+        }
     }
 
     // WOO HOOO ANOTHER PLAYER METHOD :D
@@ -893,7 +1144,7 @@ public class BattleManager : MonoBehaviour
     */
     bool IsPartyDefeated()
     {
-        if (bossFightStarted)
+        if (isRandomEncounterBattle ||bossFightStarted)
             return playerUnit.IsDead();
 
         return playerUnit.IsDead() && wifeUnit.IsDead();
@@ -910,8 +1161,8 @@ public class BattleManager : MonoBehaviour
     */
     Unit GetRandomLivingAlly()
     {
-        // During boss phase, only the player is considered an ally target
-        if (bossFightStarted)
+        // During Random Encounters During boss phase, only the player is considered an ally target
+        if (isRandomEncounterBattle || bossFightStarted)
         {
             if (!playerUnit.IsDead())
                 return playerUnit;
@@ -964,10 +1215,12 @@ public class BattleManager : MonoBehaviour
     */
     void StartNextAllyPhase()
     {
+        SetPlayerNormalSprite();
+        
         if (IsPartyDefeated())
         {
             state = BattleState.LOST;
-            EndBattle();
+            StartCoroutine(EndBattle());
             return;
         }
 
@@ -1020,7 +1273,16 @@ public class BattleManager : MonoBehaviour
 
         UpdateSkillButtonsUI();
         ShowSkillPanel();
-        SetBattleText("Choose a skill.");
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            backButton.interactable = false;
+            SetBattleText("Tutorial: Use any skill.");
+        }
+        else
+        {
+            backButton.interactable = true;
+            SetBattleText("Choose a skill.");
+        }
     }
 
     // Called when the Back button on the skill panel is pressed
@@ -1028,6 +1290,9 @@ public class BattleManager : MonoBehaviour
     {
         if (state != BattleState.PLAYERTURN)
             return;
+
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        return;
 
         ShowActionPanel();
         SetBattleText("Choose an action.");
@@ -1039,12 +1304,19 @@ public class BattleManager : MonoBehaviour
         if (state != BattleState.PLAYERTURN)
             return;
 
-        // Stop trying to be a pussy.
-        if (bossFightStarted)
+        // Stop player from fleeing from Tutorial Battle
+        if (!isRandomEncounterBattle)
         {
-            SetBattleText("You cannot escape your destiny.");
-            return;
+            SetBattleText("You Cannot Run From This Battle!");
+
+        // End the tutorial when player uses flee button for the first time
+        if (!bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 3)
+        {
+            tutorialStep = 4;
+            SetActionButtonsInteractable(true);
         }
+        return;
+    }
 
         StartCoroutine(PlayerFlee());
     }
@@ -1091,17 +1363,8 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(
-            playerUnit.GetDamage(),
-            out exploitedOpening,
-            out rageBoosted
-        );
-        damage = ApplyCriticalHit(
-            damage,
-            playerCritChancePercent,
-            playerCritMultiplier,
-            out isCritical
-        );
+        int damage = ApplyPlayerDamageBonuses(playerUnit.GetDamage(), out exploitedOpening,out rageBoosted);
+        damage = ApplyCriticalHit(damage,playerCritChancePercent,playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
 
@@ -1113,6 +1376,12 @@ public class BattleManager : MonoBehaviour
         }
 
         SetBattleText(attackMessage);
+        
+        //Advance Tutorial after first attack
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 0)
+        {
+            tutorialStep = 1;
+        }
 
         if (rageBoosted)
         {
@@ -1129,7 +1398,13 @@ public class BattleManager : MonoBehaviour
         BeginPlayerAction(false);
 
         playerUnit.isDefending = true;
+        SetPlayerBlockingSprite();
         SetBattleText("You brace for impact!");
+        // Advance tutorial after defending for the first time
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 1)
+        {
+            tutorialStep = 2;
+        }
 
         yield return new WaitForSeconds(1f);
 
@@ -1155,7 +1430,7 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(1f);
 
         state = BattleState.FLED;
-        EndBattle();
+        StartCoroutine(EndBattle());
     }
 
     // Deals damage and stuns the enemy for one turn
@@ -1173,17 +1448,8 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(
-            Random.Range(shoulderBashMinDamage, shoulderBashMaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
-        damage = ApplyCriticalHit(
-            damage,
-            playerCritChancePercent,
-            playerCritMultiplier,
-            out isCritical
-        );
+        int damage = ApplyPlayerDamageBonuses(Random.Range(shoulderBashMinDamage, shoulderBashMaxDamage + 1),out exploitedOpening, out rageBoosted);
+        damage = ApplyCriticalHit(damage,playerCritChancePercent, playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
         enemyStunned = true;
@@ -1193,6 +1459,12 @@ public class BattleManager : MonoBehaviour
             attackMessage = "Critical hit! " + attackMessage;
         }
         SetBattleText(attackMessage);
+        // Advance Tutorial if player uses Shoulder Bash for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
 
         if (rageBoosted)
         {
@@ -1217,17 +1489,8 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(
-            Random.Range(allOutAttackMinDamage, allOutAttackMaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
-        damage = ApplyCriticalHit(
-            damage,
-            playerCritChancePercent,
-            playerCritMultiplier,
-            out isCritical
-        );
+        int damage = ApplyPlayerDamageBonuses(Random.Range(allOutAttackMinDamage, allOutAttackMaxDamage + 1),out exploitedOpening, out rageBoosted);
+        damage = ApplyCriticalHit(damage,playerCritChancePercent,playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
 
@@ -1237,6 +1500,12 @@ public class BattleManager : MonoBehaviour
             attackMessage = "Critical hit! " + attackMessage;
         }
         SetBattleText(attackMessage);
+        // Advance Tutorial if player uses All Out Attack for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
 
         if (rageBoosted)
         {
@@ -1266,6 +1535,12 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(0.75f);
 
         SetBattleText(playerUnit.unitName + "'s strength surges!");
+        //Advance Tutorial if player uses Rage for the first time in the tutorial!
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
         yield return new WaitForSeconds(1.0f);
 
         if (!wifeUnit.IsDead())
@@ -1299,6 +1574,14 @@ public class BattleManager : MonoBehaviour
     */
     IEnumerator WifeTurn()
     {
+        //If its a random encounter battle dont use wife logic
+        if (isRandomEncounterBattle)
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+            yield break;
+        }
+       
         state = BattleState.BUSY;
 
         if (bossFightStarted || wifeUnit.IsDead())
@@ -1323,19 +1606,14 @@ public class BattleManager : MonoBehaviour
             exploitedOpening = true;
         }
 
-        damage = ApplyCriticalHit(
-            damage,
-            playerCritChancePercent,
-            playerCritMultiplier,
-            out isCritical
-        );
+        damage = ApplyCriticalHit(damage,playerCritChancePercent,playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
 
         string wifeMessage;
 
         if (exploitedOpening && isCritical)
-            wifeMessage ="Critical hit! " + wifeUnit.unitName + " exploited the opening for " + damage + " damage!";
+            wifeMessage ="Critical hit! "+ wifeUnit.unitName + " exploited the opening for "+ damage + " damage!";
         else if (exploitedOpening)
             wifeMessage = wifeUnit.unitName + " exploited the opening for " + damage + " damage!";
         else if (isCritical)
@@ -1349,14 +1627,18 @@ public class BattleManager : MonoBehaviour
 
         if (enemyUnit.IsDead())
         {
-            if (!bossFightStarted)
+            if (enemyUnit == zombieUnit && !zombie2Spawned)
+            {
+                StartCoroutine(StartSecondZombieFight());
+            }
+            else if (!bossFightStarted)
             {
                 StartCoroutine(StartBossFight());
             }
             else
             {
                 state = BattleState.WON;
-                EndBattle();
+                StartCoroutine(EndBattle());
             }
         }
         else
@@ -1402,12 +1684,7 @@ public class BattleManager : MonoBehaviour
             damage = enemyUnit.GetDamage();
         }
 
-        damage = ApplyCriticalHit(
-            damage,
-            enemyCritChancePercent,
-            enemyCritMultiplier,
-            out isCritical
-        );
+        damage = ApplyCriticalHit(damage, enemyCritChancePercent, enemyCritMultiplier, out isCritical);
 
         SetBattleText(attackName);
         yield return new WaitForSeconds(0.5f);
@@ -1417,7 +1694,7 @@ public class BattleManager : MonoBehaviour
         if (target == null)
         {
             state = BattleState.LOST;
-            EndBattle();
+            StartCoroutine(EndBattle());
             yield break;
         }
 
@@ -1426,6 +1703,7 @@ public class BattleManager : MonoBehaviour
             damage = Mathf.Max(1, damage / 2);
             playerUnit.isDefending = false;
             blocked = true;
+            SetPlayerNormalSprite();
         }
 
         DamageAlly(target, damage, bossMoveType, isCritical);
@@ -1433,16 +1711,18 @@ public class BattleManager : MonoBehaviour
         if (blocked)
         {
             if (isCritical)
-                SetBattleText(target.unitName + " blocked part of a critical hit! Enemy dealt "+ damage + " damage!");
+            SetBattleText( target.unitName + " blocked part of a critical hit! Enemy dealt " + damage + " damage!");
             else
-                SetBattleText(target.unitName+ " blocked part of the damage! Enemy dealt " + damage + " damage!");
+            SetBattleText(target.unitName+ " blocked part of the damage! Enemy dealt "+ damage+ " damage!");
         }
         else if (bossMoveType == "Bite")
         {
             if (isCritical)
-                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
+                SetBattleText("Critical hit! "+ attackName+ " It dealt "+ damage+ " damage to "+ target.unitName+ "!");
             else
-                SetBattleText(attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
+                SetBattleText(
+                    attackName + " It dealt " + damage + " damage to " + target.unitName + "!"
+                );
             yield return new WaitForSeconds(1f);
 
             if (target == playerUnit)
@@ -1469,8 +1749,7 @@ public class BattleManager : MonoBehaviour
         }
         else if (bossMoveType == "Lunge")
         {
-            if (isCritical)
-                SetBattleText("Critical hit! " + attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
+            if (isCritical)SetBattleText("Critical hit! "+ attackName+ " It dealt " + damage + " damage to "+ target.unitName + "!" );
             else
                 SetBattleText(attackName + " It dealt " + damage + " damage to " + target.unitName + "!");
             yield return new WaitForSeconds(1f);
@@ -1480,11 +1759,9 @@ public class BattleManager : MonoBehaviour
         else
         {
             if (isCritical)
-                SetBattleText("Critical hit!\n" + attackName+ "\nIt dealt " + damage + " damage to " + target.unitName + ".");
+            SetBattleText("Critical hit!\n"+ attackName + "\nIt dealt " + damage + " damage to " + target.unitName + ".");
             else
-                SetBattleText(
-                    attackName + "\nIt dealt " + damage + " damage to " + target.unitName + "."
-                );
+            SetBattleText(attackName + "\nIt dealt " + damage + " damage to " + target.unitName + ".");
         }
 
         yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
@@ -1493,22 +1770,78 @@ public class BattleManager : MonoBehaviour
     // Smoothly animates HP bars every frame toward their target values
     void Update()
     {
+        if (isInIntro && Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
+        {
+            skipIntroRequested = true;
+        }
+
+        if (state == BattleState.PLAYERTURN &&Keyboard.current != null && Keyboard.current.dKey.wasPressedThisFrame)
+        {
+            debugMaxDamage = !debugMaxDamage;
+
+            if(debugMaxDamage)
+            {
+                playerUnit.minDamage = 1000;
+                playerUnit.maxDamage = 1000;
+                Debug.Log("DEBUG: Max damage enabled");
+                SetBattleText("Damage values set to max");
+            }
+            else
+            {
+                playerUnit.minDamage = originalMinDamage;
+                playerUnit.maxDamage = originalMaxDamage;
+                Debug.Log("DEBUG: Max damage disabled");
+                SetBattleText("Damage values returned to normal");
+            }
+        }
+        
         playerHPBarFill.fillAmount = Mathf.Lerp(playerHPBarFill.fillAmount,playerTargetHPFill,Time.deltaTime * hpBarSpeed);
         wifeHPBarFill.fillAmount = Mathf.Lerp(wifeHPBarFill.fillAmount,wifeTargetHPFill,Time.deltaTime * hpBarSpeed);
-        enemyHPBarFill.fillAmount = Mathf.Lerp(enemyHPBarFill.fillAmount,enemyTargetHPFill,Time.deltaTime * hpBarSpeed);
+        enemyHPBarFill.fillAmount = Mathf.Lerp(enemyHPBarFill.fillAmount,enemyTargetHPFill, Time.deltaTime * hpBarSpeed);
         playerSPBarFill.fillAmount = Mathf.Lerp(playerSPBarFill.fillAmount,playerTargetSPFill,Time.deltaTime * hpBarSpeed);
     }
+    
+    /* 
+    Coroutine to handle returning to the overworld scene after winning a random encounter battle with just a zombie. 
+    Displays a victory message, waits for a moment, then loads the overworld scene specified in the GameSession.
+    */
+    IEnumerator ReturnToOverworldAfterBattle()
+    {
+        if (state == BattleState.FLED)
+            SetBattleText("You fled from battle!");
+        else
+            SetBattleText("You defeated the zombie!");
+
+        yield return new WaitForSeconds(2f);
+
+        if (GameSession.Instance != null)
+        {
+            GameSession.Instance.isRandomEncounter = false;
+        }
+
+        SceneChanger.Instance.PreviousScene();
+    }
+
 
     // Finalizes battle state and displays result message --> Disables all player input
-    void EndBattle()
+    IEnumerator EndBattle()
     {
         SetActionButtonsInteractable(false);
+        
+        // Random Encounter End logic
+        if (isRandomEncounterBattle)
+        {
+            yield return StartCoroutine(ReturnToOverworldAfterBattle());
+            yield break;
+        }
+        
+        
+        // Set Text based on State
+        if (state == BattleState.WON) SetBattleText("You won the battle!");
+        else if (state == BattleState.LOST) SetBattleText("You were defeated!");
+        else if (state == BattleState.FLED) SetBattleText("You fled from battle!");
 
-        if (state == BattleState.WON)
-            SetBattleText("You won!");
-        else if (state == BattleState.LOST)
-            SetBattleText("You were defeated!");
-        else if (state == BattleState.FLED)
-            SetBattleText("You fled from battle!");
+        yield return new WaitForSeconds(2f);
+        SceneChanger.Instance.LoadScene("PlayerHouse");
     }
 }
