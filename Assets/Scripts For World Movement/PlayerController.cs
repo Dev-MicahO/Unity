@@ -12,6 +12,8 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private float randValue;
     private float amountSinceLastFight = 0f;
+    private int stepsSinceLastEncounter = 0;
+    [SerializeField] float encounterBufferSteps = 5f; // Minimum steps before an encounter can occur
     private bool isEncounterLoading = false;
 
     //tilemap that the player walks on
@@ -78,16 +80,19 @@ public class PlayerController : MonoBehaviour
             Vector2 targetPosition = rb.position + direction;
             //use a IEnumerator for some smooth movement
             StartCoroutine(SmoothMovement(targetPosition));
+            // Increase the step count
+            stepsSinceLastEncounter++;
             
             //we will have a random encounter here in the movement for now. 
             //Later it could be added to a overhead game manager
             float random = Random.value;
             randValue = random + amountSinceLastFight;
 
-            if(randValue > .99f && !isEncounterLoading)
+            if(randValue > .99f && !isEncounterLoading && stepsSinceLastEncounter >= encounterBufferSteps)
             {
                 Debug.Log("Trigger fight call");
                 amountSinceLastFight = 0f;
+                stepsSinceLastEncounter = 0;
                 TriggerRandomEncounter();
             }
             else
