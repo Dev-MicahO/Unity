@@ -28,9 +28,9 @@ public class BattleManager : MonoBehaviour
     public TextMeshProUGUI enemyHPText;
     public TextMeshProUGUI wifeHPText;
     public TextMeshProUGUI playerSPText;
-    public TextMeshProUGUI shoulderBashButtonText;
-    public TextMeshProUGUI allOutAttackButtonText;
-    public TextMeshProUGUI rageButtonText;
+    public TextMeshProUGUI Skill1ButtonText;
+    public TextMeshProUGUI Skill2ButtonText;
+    public TextMeshProUGUI Skill3ButtonText;
     public TextMeshProUGUI dialogueText;
 
     // Typewriter effect for Dialogue
@@ -63,9 +63,9 @@ public class BattleManager : MonoBehaviour
     public Button fleeButton;
 
     // Skill Buttons
-    public Button shoulderBashButton;
-    public Button allOutAttackButton;
-    public Button rageButton;
+    public Button Skill1Button;
+    public Button Skill2Button;
+    public Button Skill3Button;
     public Button backButton;
 
     // Panels / UI
@@ -96,21 +96,72 @@ public class BattleManager : MonoBehaviour
 
     // Skills
     [Header("Player Skills")]
+    // Skill names and costs are stored in variables for easier management
+    private string skill1Name;
+    private string skill2Name;
+    private string skill3Name;
+
+    private int skill1Cost;
+    private int skill2Cost;
+    private int skill3Cost;
+
     // Warrior Skills
-    // Shoulder Bash - A strong attack that stuns the enemy for one turn. Costs SP and has a damage range.
-    public int shoulderBashCost = 3;
-    public int shoulderBashMinDamage = 18;
-    public int shoulderBashMaxDamage = 24;
+    [Header("Warrior Skills")]
+    public int warriorSkill1Cost = 3;   // Shoulder Bash
+    public int warriorSkill1MinDamage = 18;
+    public int warriorSkill1MaxDamage = 24;
 
-    // All out attack - Aoe damaging move that hits all opponents for moderately high damage (AOE not implemented yet)
-    public int allOutAttackCost = 5;
-    public int allOutAttackMinDamage = 28;
-    public int allOutAttackMaxDamage = 36;
+    public int warriorSkill2Cost = 5;   // All Out Attack
+    public int warriorSkill2MinDamage = 28;
+    public int warriorSkill2MaxDamage = 36;
 
-    // Rage - Buff that increases damage for 2 turns
-    public int rageCost = 4;
-    public int rageBonusDamage = 8;
-    public int rageDurationTurns = 2;
+    public int warriorSkill3Cost = 4;   // Rage
+    public int warriorRageBonusDamage = 8;
+    public int warriorRageDurationTurns = 2;
+
+    // Mage Skills
+    [Header("Mage Skills")]
+    public int mageSkill1Cost = 4; // Blood Pact Bolt
+    public int mageSkill1MinDamage = 30;
+    public int mageSkill1MaxDamage = 40;
+    public int mageSkill1SelfDamagePercent = 8; // Percentage of max health taken as self-damage
+
+    public int mageSkill2Cost = 4; // Grasp of the Abyss
+    public int mageSkill2MinDamage = 30;
+    public int mageSkill2MaxDamage = 40;
+    public int mageParalyzeChance = 30;
+
+    public int mageSkill3Cost = 4; // Forbidden Knowledge
+    public int mageFKBonusDamage = 12;
+    public int mageFKDurationTurns = 3;
+    public int mageSkill3SelfDamagePercent = 6; // Percentage of max health taken as self-damage
+    public int mageConfusionChancePercent = 35;
+
+    // Doctor Skills
+    [Header("Doctor Skills")]
+    public int doctorSkill1Cost = 3; // Patch Wounds
+    public int doctorSkill1HealAmount = 25;
+
+    public int doctorSkill2Cost = 5; // Field Surgery
+    public int doctorSkill2HealAmount = 50;
+
+    public int doctorSkill3Cost = 5; // Happy Gas
+    public int doctorHGHealPerTurn = 6;
+    public int doctorHGDurationTurns = 3;
+    public int doctorHGDodgeBonusPercent = 15;
+    
+    // Thief Skills
+    [Header("Thief Skills")]
+    public int thiefSkill1Cost = 3; // Pocket Sand
+    public int thiefBlindChancePercent = 40;
+    public int thiefBlindDurationTurns = 2;
+
+    public int thiefSkill2Cost =4; // Stealth
+    public int thiefStealthDurationTurns = 3;
+    
+    public int thiefSkill3Cost = 4; // Sneaky Strike
+    public int thiefSkill3MinDamage = 18;
+    public int thiefSkill3MaxDamage = 26;
 
     // CRITS!?
     [Header("Critical Hits")]
@@ -151,10 +202,28 @@ public class BattleManager : MonoBehaviour
     private int tutorialStep = 0;
 
     // Player status effects
+    // Bleed
     private bool playerBleeding = false;
     private int bleedTurnsRemaining = 0;
+    // Rage
     private bool playerRageActive = false;
     private int rageTurnsRemaining = 0;
+
+    // Forbidden Knowledge Confusion
+    private bool PlayerFKActive = false;
+    private int fkTurnsRemaining = 0;
+    private bool playerConfused = false;
+    private int confusionTurnsRemaining = 0;
+
+    // Doctor Happy Gas + Field Surgery turn skip
+    private bool doctorSkipNextTurn = false;
+    private bool HGActive = false;
+    private int HGTurnsRemaining = 0;
+
+    // Thief Stealth
+    private bool thiefStealthed = false;
+    private int stealthTurnsRemaining = 0;
+    private bool thiefNextAttackDoubleDamage = false;
 
     // Status Effects
     [Header("Bleed Effect")]
@@ -163,6 +232,10 @@ public class BattleManager : MonoBehaviour
     public int bleedDuration = 2;
 
     private bool enemyStunned = false;
+    private bool enemyParalyzed = false;
+    private int enemyParalyzedTurnsRemaining = 0;
+    private bool enemyBlinded = false;
+    private int enemyBlindedTurnsRemaining = 0;
 
     //Effects
     [Header("Hit Feedback")]
@@ -199,11 +272,75 @@ public class BattleManager : MonoBehaviour
     private int originalMinDamage;
     private int originalMaxDamage;
 
+    // Method to get the current player class from the GameSession for easier access in BattleManager without directly referencing GameSession multiple times. This is used for setting up skills and other class-specific logic.
+    PlayerClass GetCurrentPlayerClass()
+    {
+        if (GameSession.Instance != null)
+            return GameSession.Instance.selectedClass;
 
+        return PlayerClass.Warrior; // Default to Warrior if no GameSession found
+    }
+   
+   // Method to set up skill names and costs based on the player's class. This is called at the start of the battle to initialize the skill UI and logic. 
+    void SelectedClassSetup()
+    {
+        PlayerClass currentClass = GetCurrentPlayerClass();
+
+        switch (currentClass)
+        {
+            case PlayerClass.Warrior:
+                skill1Name = "Shoulder Bash";
+                skill2Name = "All Out Attack";
+                skill3Name = "Rage";
+                
+                skill1Cost = warriorSkill1Cost;
+                skill2Cost = warriorSkill2Cost;
+                skill3Cost = warriorSkill3Cost;
+                break;
+            
+            case PlayerClass.Mage:
+                skill1Name = "Blood Pact Bolt";
+                skill2Name = "Grasp of the Abyss";
+                skill3Name = "Forbidden Knowledge";
+                
+                skill1Cost = mageSkill1Cost;
+                skill2Cost = mageSkill2Cost;
+                skill3Cost = mageSkill3Cost;
+                break;
+            case PlayerClass.Doctor:
+                skill1Name = "Patch Wounds";
+                skill2Name = "Field Surgery";
+                skill3Name = "Happy Gas";
+                
+                skill1Cost = doctorSkill1Cost;
+                skill2Cost = doctorSkill2Cost;
+                skill3Cost = doctorSkill3Cost;
+                break;
+            case PlayerClass.Thief:
+                skill1Name = "Pocket Sand";
+                skill2Name = "Stealth";
+                skill3Name = "Sneaky Strike";
+                
+                skill1Cost = thiefSkill1Cost;
+                skill2Cost = thiefSkill2Cost;
+                skill3Cost = thiefSkill3Cost;
+                break;
+        }
+    
+    }
 
     void Start()
     {
         Debug.Log("BattleManager Start called");
+        
+        if (GameSession.Instance != null)
+        {
+            GameSession.Instance.InitializePlayerStatsFromUnit(playerUnit);
+            ApplyPersistentPlayerStats();
+        }
+
+        SelectedClassSetup();
+
 
         // Start both HP bars at full
         playerTargetHPFill = 1f;
@@ -228,6 +365,7 @@ public class BattleManager : MonoBehaviour
         // Shows the main action panel and disables buttons until setup is done
         ShowActionPanel();
         SetActionButtonsInteractable(false);
+
 
         originalMinDamage = playerUnit.minDamage;
         originalMaxDamage = playerUnit.maxDamage;
@@ -261,6 +399,17 @@ public class BattleManager : MonoBehaviour
             StartCoroutine(PlayIntroDialogue());
         }
     }
+
+     void ApplyPersistentPlayerStats()
+    {
+        if (GameSession.Instance == null)
+            return;
+
+        GameSession.Instance.ApplyStatsToUnit(playerUnit);
+
+        playerMaxSP = GameSession.Instance.playerMaxSP;
+    }
+
     void SetPlayerBlockingSprite()
     {
         if (playerSpriteRenderer != null && playerBlockingSprite != null)
@@ -325,7 +474,7 @@ public class BattleManager : MonoBehaviour
         // Rage adds bonus damage
         if (playerRageActive)
         {
-            finalDamage += rageBonusDamage;
+            finalDamage += warriorRageBonusDamage;
             rageBoosted = true;
         }
 
@@ -656,13 +805,13 @@ public class BattleManager : MonoBehaviour
     // Updates skill button labels and enables/disables them based on whether the player has enough SP or not.
     void UpdateSkillButtonsUI()
     {
-        shoulderBashButtonText.text = "Shoulder Bash\nSP " + shoulderBashCost;
-        allOutAttackButtonText.text = "All Out Attack\nSP " + allOutAttackCost;
-        rageButtonText.text = "Rage\nSP " + rageCost;
+        Skill1ButtonText.text = skill1Name + "\nSP " + skill1Cost;
+        Skill2ButtonText.text = skill2Name + "\nSP " + skill2Cost;
+        Skill3ButtonText.text = skill3Name + "\nSP " + skill3Cost;
 
-        shoulderBashButton.interactable = playerCurrentSP >= shoulderBashCost;
-        allOutAttackButton.interactable = playerCurrentSP >= allOutAttackCost;
-        rageButton.interactable = playerCurrentSP >= rageCost;
+        Skill1Button.interactable = playerCurrentSP >= skill1Cost;
+        Skill2Button.interactable = playerCurrentSP >= skill2Cost;
+        Skill3Button.interactable = playerCurrentSP >= skill3Cost;
     }
 
     // Made a method for updating battle text i got tired of typing BattleText.text = "some message" in every method that needs to update the battle text.
@@ -955,13 +1104,11 @@ public class BattleManager : MonoBehaviour
 
         enemyUnit = zombieUnit;
          
-         // Load persistent player HP into the battle unit
+         // Load persistent player stats into the battle unit
         if (GameSession.Instance != null)
         {
             GameSession.Instance.InitializePlayerStatsFromUnit(playerUnit);
-
-            playerUnit.maxHealth = GameSession.Instance.playerMaxHP;
-            playerUnit.currentHealth = GameSession.Instance.playerCurrentHP;
+            ApplyPersistentPlayerStats();
         }
 
         // Reset SP
@@ -999,6 +1146,26 @@ public class BattleManager : MonoBehaviour
             StartCoroutine(WifeTurn());
             yield break;
         }
+        // Doctor Field Surgery Turn Skip  Logic
+        if (doctorSkipNextTurn)
+        {
+            doctorSkipNextTurn = false;
+            SetBattleText(playerUnit.unitName + " must clean the equipment and skips this turn!");
+            yield return new WaitForSeconds(1f);
+
+            if (!wifeUnit.IsDead())
+            {
+                state = BattleState.BUSY;
+                StartCoroutine(WifeTurn());
+            }
+            else
+            {
+                state = BattleState.ENEMYTURN;
+                StartCoroutine(EnemyTurn());
+            }
+
+            yield break;
+        }
 
         if (playerBleeding)
         {
@@ -1017,6 +1184,88 @@ public class BattleManager : MonoBehaviour
                 }
 
                 yield break;
+            }
+        }
+
+        // Happy Gas Logic
+        if (HGActive)
+        {
+            int gasHeal = doctorHGHealPerTurn;
+            playerUnit.currentHealth = Mathf.Min(playerUnit.maxHealth, playerUnit.currentHealth + gasHeal);
+
+            if (isRandomEncounterBattle)
+            {
+                SyncPlayerHPToSession();
+            }
+
+            UpdateHPText();
+            ShowDamagePopup(playerDamagePoint, gasHeal, "+", Color.green);
+            SetBattleText("Happy Gas restores " + gasHeal + " HP!");
+            yield return new WaitForSeconds(0.75f);
+
+            HGTurnsRemaining--;
+            if (HGTurnsRemaining <= 0)
+            {
+                HGActive = false;
+            }
+        }
+
+        // Confusion Logic
+
+        if (playerConfused)
+        {
+            int confusionRoll = Random.Range(1, 101);
+
+            if (confusionRoll <= mageConfusionChancePercent)
+            {
+                int selfHit = Mathf.Max(1, playerUnit.GetDamage() / 2);
+                playerUnit.TakeDamage(selfHit);
+
+                if (isRandomEncounterBattle)
+                {
+                    SyncPlayerHPToSession();
+                }
+
+                UpdateHPText();
+                
+                // You died to confusion lmfao
+                if (playerUnit.IsDead())
+                {
+                    if (IsPartyDefeated())
+                    {
+                        state = BattleState.LOST;
+                        StartCoroutine(EndBattle());
+                    }
+                    else
+                    {
+                        StartCoroutine(WifeTurn());
+                    }
+
+                    yield break;
+                }
+
+                ShowDamagePopup(playerDamagePoint, selfHit, "-", criticalDamageColor);
+                SetBattleText(playerUnit.unitName + " is confused and hurts themself!");
+                yield return new WaitForSeconds(1f);
+            }
+
+            confusionTurnsRemaining--;
+            if (confusionTurnsRemaining <= 0)
+            {
+                playerConfused = false;
+            }
+        }
+
+        if (thiefStealthed)
+        {
+            stealthTurnsRemaining--;
+
+            if (stealthTurnsRemaining <= 0)
+            {
+                thiefStealthed = false;
+                thiefNextAttackDoubleDamage = false;
+                SetBattleText("You slip out of stealth.");
+                yield return new WaitForSeconds(0.75f);
             }
         }
 
@@ -1157,17 +1406,47 @@ public class BattleManager : MonoBehaviour
         StartNextAllyPhase();
     }
 
-    // Reduces remaining Rage duration after an attack -> Disables Rage when duration expires
-    void ConsumeRageTurn()
+    // Reduces remaining Buff duration after an attack -> Disables Buff when duration expires
+    void ConsumeBuffTurn()
     {
-        if (!playerRageActive)
-            return;
+        bool rageExpiredThisTurn = false;
+        bool fkExpiredThisTurn = false;
 
-        rageTurnsRemaining--;
-
-        if (rageTurnsRemaining <= 0)
+        if (playerRageActive)
         {
-            playerRageActive = false;
+            rageTurnsRemaining--;
+
+            if (rageTurnsRemaining <= 0)
+            {
+                playerRageActive = false;
+                rageTurnsRemaining = 0;
+                rageExpiredThisTurn = true;
+            }
+        }
+
+        if (PlayerFKActive)
+        {
+            fkTurnsRemaining--;
+
+            if (fkTurnsRemaining <= 0)
+            {
+                PlayerFKActive = false;
+                fkTurnsRemaining = 0;
+                fkExpiredThisTurn = true;
+            }
+        }
+
+        if (rageExpiredThisTurn && fkExpiredThisTurn)
+        {
+            SetBattleText("Your empowering effects fade.");
+        }
+        else if (rageExpiredThisTurn)
+        {
+            SetBattleText("Rage fades.");
+        }
+        else if (fkExpiredThisTurn)
+        {
+            SetBattleText("Forbidden Knowledge fades.");
         }
     }
 
@@ -1356,31 +1635,81 @@ public class BattleManager : MonoBehaviour
         StartCoroutine(PlayerFlee());
     }
 
-    // Called when the Shoulder Bash skill button is pressed
-    public void OnShoulderBashButton()
+    // Called when the 1st skill button is pressed
+    public void OnSkill1Button()
     {
         if (state != BattleState.PLAYERTURN)
-            return;
+            return; 
+        switch (GetCurrentPlayerClass())
+        {
+            case PlayerClass.Warrior:
+                StartCoroutine(PlayerShoulderBash());
+                break;
 
-        StartCoroutine(PlayerShoulderBash());
+            case PlayerClass.Mage:
+                StartCoroutine(PlayerBloodPactBolt());
+                break;
+
+            case PlayerClass.Doctor:
+                StartCoroutine(PlayerPatchWounds());
+                break;
+            
+            case PlayerClass.Thief:
+                StartCoroutine(PlayerPocketSand());
+                break;
+        }
     }
 
-    // Called when the All Out Attack skill button is pressed
-    public void OnAllOutAttackButton()
+    // Called when the 2nd skill button is pressed
+    public void OnSkill2Button()
     {
         if (state != BattleState.PLAYERTURN)
             return;
 
-        StartCoroutine(PlayerAllOutAttack());
+                switch (GetCurrentPlayerClass())
+        {
+            case PlayerClass.Warrior:
+                StartCoroutine(PlayerAllOutAttack());
+                break;
+
+            case PlayerClass.Mage:
+                StartCoroutine(PlayerGraspOfTheAbyss());
+                break;
+
+            case PlayerClass.Doctor:
+                StartCoroutine(PlayerFieldSurgery());
+                break;
+            
+            case PlayerClass.Thief:
+                StartCoroutine(PlayerStealth());
+                break;
+        }
     }
 
-    // Called when the Rage skill button is pressed
-    public void OnRageButton()
+    // Called when the 3rd skill button is pressed
+    public void OnSkill3Button()
     {
         if (state != BattleState.PLAYERTURN)
             return;
 
-        StartCoroutine(PlayerRage());
+                switch (GetCurrentPlayerClass())
+        {
+            case PlayerClass.Warrior:
+                StartCoroutine(PlayerRage());
+                break;
+
+            case PlayerClass.Mage:
+                StartCoroutine(PlayerForbiddenKnowledge());
+                break;
+
+            case PlayerClass.Doctor:
+                StartCoroutine(PlayerHappyGas());
+                break;
+            
+            case PlayerClass.Thief:
+                StartCoroutine(PlayerSneakyStrike());
+                break;
+        }
     }
 
     // ================= PLAYER ACTIONS =================
@@ -1398,8 +1727,22 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(playerUnit.GetDamage(), out exploitedOpening,out rageBoosted);
-        damage = ApplyCriticalHit(damage,playerCritChancePercent,playerCritMultiplier,out isCritical);
+        int damage = ApplyPlayerDamageBonuses(playerUnit.GetDamage(), out exploitedOpening, out rageBoosted);
+
+        if (thiefStealthed && thiefNextAttackDoubleDamage)
+        {
+            damage *= 2;
+            thiefStealthed = false;
+            stealthTurnsRemaining = 0;
+            thiefNextAttackDoubleDamage = false;
+        }
+
+        if (PlayerFKActive)
+        {
+            damage += mageFKBonusDamage;
+        }
+
+        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
 
         DamageEnemy(damage, isCritical);
 
@@ -1411,16 +1754,16 @@ public class BattleManager : MonoBehaviour
         }
 
         SetBattleText(attackMessage);
-        
-        //Advance Tutorial after first attack
+       
+        // Advance tutorial after using basic attack for the first time in the tutorial battle
         if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 0)
         {
             tutorialStep = 1;
         }
 
-        if (rageBoosted)
+        if (playerRageActive || PlayerFKActive)
         {
-            ConsumeRageTurn();
+            ConsumeBuffTurn();
         }
 
         yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
@@ -1491,7 +1834,7 @@ public class BattleManager : MonoBehaviour
     // Deals damage and stuns the enemy for one turn
     IEnumerator PlayerShoulderBash()
     {
-        if (!TrySpendSP(shoulderBashCost))
+        if (!TrySpendSP(skill1Cost))
             yield break;
 
         BeginPlayerAction();
@@ -1503,7 +1846,7 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(shoulderBashMinDamage, shoulderBashMaxDamage + 1),out exploitedOpening, out rageBoosted);
+        int damage = ApplyPlayerDamageBonuses(Random.Range(warriorSkill1MinDamage, warriorSkill1MaxDamage + 1),out exploitedOpening, out rageBoosted);
         damage = ApplyCriticalHit(damage,playerCritChancePercent, playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
@@ -1523,7 +1866,7 @@ public class BattleManager : MonoBehaviour
 
         if (rageBoosted)
         {
-            ConsumeRageTurn();
+            ConsumeBuffTurn();
         }
 
         yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
@@ -1532,7 +1875,7 @@ public class BattleManager : MonoBehaviour
     // High damage attack (intended for AOE later)
     IEnumerator PlayerAllOutAttack()
     {
-        if (!TrySpendSP(allOutAttackCost))
+        if (!TrySpendSP(skill2Cost))
             yield break;
 
         BeginPlayerAction();
@@ -1544,7 +1887,7 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(allOutAttackMinDamage, allOutAttackMaxDamage + 1),out exploitedOpening, out rageBoosted);
+        int damage = ApplyPlayerDamageBonuses(Random.Range(warriorSkill2MinDamage, warriorSkill2MaxDamage + 1),out exploitedOpening, out rageBoosted);
         damage = ApplyCriticalHit(damage,playerCritChancePercent,playerCritMultiplier,out isCritical);
 
         DamageEnemy(damage, isCritical);
@@ -1564,7 +1907,7 @@ public class BattleManager : MonoBehaviour
 
         if (rageBoosted)
         {
-            ConsumeRageTurn();
+            ConsumeBuffTurn();
         }
 
         yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
@@ -1574,13 +1917,13 @@ public class BattleManager : MonoBehaviour
     // Also triggers visual feedback to indicate Rage is active
     IEnumerator PlayerRage()
     {
-        if (!TrySpendSP(rageCost))
+        if (!TrySpendSP(skill3Cost))
             yield break;
 
         BeginPlayerAction();
 
         playerRageActive = true;
-        rageTurnsRemaining = rageDurationTurns;
+        rageTurnsRemaining = warriorRageDurationTurns;
 
         SetBattleText(playerUnit.unitName + " uses Rage!");
         // Player flashes orange to indicate Rage is active
@@ -1609,6 +1952,434 @@ public class BattleManager : MonoBehaviour
             StartCoroutine(EnemyTurn());
         }
     }
+    // Mage Skills
+    IEnumerator PlayerBloodPactBolt()
+    {
+        if (!TrySpendSP(skill1Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        SetBattleText("You cast Blood Pact Bolt!");
+        // Advance Tutorial if player uses Blood Pact Bolt for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1.0f);
+
+        int selfDamage = Mathf.CeilToInt(playerUnit.maxHealth * (mageSkill1SelfDamagePercent / 100f));
+        playerUnit.TakeDamage(selfDamage);
+
+        UpdateHPText();
+        
+        // Congrats dumbass you killed yourself
+        if (playerUnit.IsDead())
+        { 
+            SetBattleText("The blood price was too great!");
+            yield return new WaitForSeconds(1f);
+
+            if (IsPartyDefeated())
+            {
+                state = BattleState.LOST;
+                StartCoroutine(EndBattle());
+            }
+            else
+            {
+                StartCoroutine(WifeTurn());
+            }
+
+            yield break;
+        }
+
+        if (isRandomEncounterBattle)
+        {
+            SyncPlayerHPToSession();
+        }
+
+        ShowDamagePopup(playerDamagePoint, selfDamage, "-", bleedDamageColor);
+        StartCoroutine(ShakeTarget(playerUnit.transform));
+        StartCoroutine(FlashTarget(GetUnitSpriteRenderer(playerUnit)));
+
+        yield return new WaitForSeconds(0.5f);
+
+        bool exploitedOpening;
+        bool rageBoosted;
+        bool isCritical;
+
+        int damage = ApplyPlayerDamageBonuses(Random.Range(mageSkill1MinDamage, mageSkill1MaxDamage + 1),
+            out exploitedOpening,
+            out rageBoosted
+        );
+
+        if (PlayerFKActive)
+        damage += mageFKBonusDamage;
+
+
+        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+
+        DamageEnemy(damage, isCritical);
+        UpdateHPText();
+
+        SetBattleText("Blood Pact Bolt deals " + damage + " damage at the cost of blood!");
+        if (PlayerFKActive)
+        {
+            ConsumeBuffTurn();
+        }
+        yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
+    }
+
+    IEnumerator PlayerGraspOfTheAbyss()
+    {
+        if (!TrySpendSP(skill2Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        SetBattleText("You summon Grasp of the Abyss!");
+        // Advance Tutorial if player uses GOTA for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1.0f);
+
+        bool exploitedOpening;
+        bool rageBoosted;
+        bool isCritical;
+
+        int damage = ApplyPlayerDamageBonuses(
+            Random.Range(mageSkill2MinDamage, mageSkill2MaxDamage + 1),
+            out exploitedOpening,
+            out rageBoosted
+        );
+
+        if (PlayerFKActive)
+            damage += mageFKBonusDamage;
+
+        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+
+        DamageEnemy(damage, isCritical);
+
+        int paralyzeRoll = Random.Range(1, 101);
+        if (paralyzeRoll <= mageParalyzeChance)
+        {
+            enemyParalyzed = true;
+            enemyParalyzedTurnsRemaining = 1;
+        }
+
+        bossDefenseLowered = true;
+
+        if (enemyParalyzed)
+            SetBattleText("Grasp of the Abyss deals " + damage + " damage and paralyzes the enemy!");
+        else
+            SetBattleText("Grasp of the Abyss deals " + damage + " damage and lowers the enemy's defenses!");
+
+        if (PlayerFKActive)
+        {
+            ConsumeBuffTurn();
+        }
+        yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
+    }
+
+    IEnumerator PlayerForbiddenKnowledge()
+    {
+        if (!TrySpendSP(skill3Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        int selfDamage = Mathf.CeilToInt(playerUnit.maxHealth * (mageSkill3SelfDamagePercent / 100f));
+        playerUnit.TakeDamage(selfDamage);
+
+        UpdateHPText();
+
+        // Congrats dumbass you killed yourself.
+        if (playerUnit.IsDead())
+        { 
+            SetBattleText("Forbidden Knowledge consumes you!");
+            yield return new WaitForSeconds(1f);
+
+            if (IsPartyDefeated())
+            {
+                state = BattleState.LOST;
+                StartCoroutine(EndBattle());
+            }
+            else
+            {
+                StartCoroutine(WifeTurn());
+            }
+
+            yield break;
+        }
+
+        if (isRandomEncounterBattle)
+        {
+            SyncPlayerHPToSession();
+        }
+
+        PlayerFKActive = true;
+        fkTurnsRemaining = mageFKDurationTurns;
+
+        int confusionRoll = Random.Range(1, 101);
+        if (confusionRoll <= mageConfusionChancePercent)
+        {
+            playerConfused = true;
+            confusionTurnsRemaining = 3;
+        }
+
+        UpdateHPText();
+        ShowDamagePopup(playerDamagePoint, selfDamage, "-", bleedDamageColor);
+
+        SetBattleText("Forbidden Knowledge floods your mind with power!");
+        // Advance Tutorial if player uses Forbidden Knowledge for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+    
+    // Doctors Skills
+    IEnumerator PlayerPatchWounds()
+    {
+        if (!TrySpendSP(skill1Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        int healAmount = doctorSkill1HealAmount;
+        playerUnit.currentHealth = Mathf.Min(playerUnit.maxHealth, playerUnit.currentHealth + healAmount);
+
+        if (isRandomEncounterBattle)
+        {
+            SyncPlayerHPToSession();
+        }
+
+        UpdateHPText();
+        ShowDamagePopup(playerDamagePoint, healAmount, "+", Color.green);
+
+        SetBattleText("Patch Wounds restores " + healAmount + " HP!");
+        // Advance Tutorial if player uses Patch Wounds for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+    IEnumerator PlayerFieldSurgery()
+    {
+        if (!TrySpendSP(skill2Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        int healAmount = doctorSkill2HealAmount;
+        playerUnit.currentHealth = Mathf.Min(playerUnit.maxHealth, playerUnit.currentHealth + healAmount);
+
+        playerBleeding = false;
+        bleedTurnsRemaining = 0;
+
+        if (isRandomEncounterBattle)
+        {
+            SyncPlayerHPToSession();
+        }
+
+        doctorSkipNextTurn = true;
+
+        UpdateHPText();
+        ShowDamagePopup(playerDamagePoint, healAmount, "+", Color.green);
+
+        SetBattleText("Field Surgery restores " + healAmount + " HP and removes status effects!");
+        // Advance Tutorial if player uses Field Surgery for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+    IEnumerator PlayerHappyGas()
+    {
+        if (!TrySpendSP(skill3Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        HGActive = true;
+        HGTurnsRemaining = doctorHGDurationTurns;
+
+        SetBattleText("Happy Gas fills the area with a healing cloud!");
+        // Advance Tutorial if player uses Happy Gas for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+
+    // Thief Skills
+    IEnumerator PlayerPocketSand()
+    {
+        if (!TrySpendSP(skill1Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        int blindRoll = Random.Range(1, 101);
+
+        if (blindRoll <= thiefBlindChancePercent)
+        {
+            enemyBlinded = true;
+            enemyBlindedTurnsRemaining = thiefBlindDurationTurns;
+            SetBattleText("Pocket Sand blinds the enemy!");
+        }
+        else
+        {
+            SetBattleText("Pocket Sand hits, but the enemy fights through it!");
+        }
+        // Advance Tutorial if player uses Pocket Sand for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+
+        IEnumerator PlayerStealth()
+    {
+        if (!TrySpendSP(skill2Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        thiefStealthed = true;
+        stealthTurnsRemaining = thiefStealthDurationTurns;
+        thiefNextAttackDoubleDamage = true;
+
+        SetBattleText("You vanish into the shadows!");
+        // Advance Tutorial if player uses Stealth for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return new WaitForSeconds(1f);
+
+        if (!wifeUnit.IsDead())
+        {
+            state = BattleState.BUSY;
+            StartCoroutine(WifeTurn());
+        }
+        else
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
+    }
+
+    IEnumerator PlayerSneakyStrike()
+    {
+        if (!TrySpendSP(skill3Cost))
+            yield break;
+
+        BeginPlayerAction();
+
+        yield return new WaitForSeconds(0.5f);
+
+        bool exploitedOpening;
+        bool rageBoosted;
+        bool isCritical;
+
+        int damage = ApplyPlayerDamageBonuses(
+            Random.Range(thiefSkill3MinDamage, thiefSkill3MaxDamage + 1),
+            out exploitedOpening,
+            out rageBoosted
+        );
+
+        if (thiefStealthed)
+        {
+            damage *= 3;
+            thiefStealthed = false;
+            stealthTurnsRemaining = 0;
+            thiefNextAttackDoubleDamage = false;
+        }
+
+        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+
+        DamageEnemy(damage, isCritical);
+
+        SetBattleText("Sneaky Strike deals " + damage + " damage!");
+        // Advance Tutorial if player uses Sneaky Strike for the first time in the tutorial
+        if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
+        {
+            tutorialStep = 3;
+            backButton.interactable = true;
+        }
+        yield return StartCoroutine(ResolveEnemyDefeatOrContinue());
+    }
+
 
     // ===================================
 
@@ -1714,6 +2485,19 @@ public class BattleManager : MonoBehaviour
     {
         state = BattleState.BUSY;
 
+         if (enemyParalyzed)
+        {
+            SetBattleText(enemyUnit.unitName + " is paralyzed and cannot move!");
+            yield return new WaitForSeconds(1f);
+
+            enemyParalyzedTurnsRemaining--;
+            if (enemyParalyzedTurnsRemaining <= 0)
+                enemyParalyzed = false;
+
+            StartNextAllyPhase();
+            yield break;
+        }
+
         if (enemyStunned)
         {
             yield return StartCoroutine(HandleEnemyStunSkip());
@@ -1746,6 +2530,22 @@ public class BattleManager : MonoBehaviour
 
         Unit target = GetRandomLivingAlly();
 
+        // Stealth Logic: Later when companions are added make it target the non stealthed unit.
+        if (thiefStealthed && target == playerUnit)
+        {
+            if (!isRandomEncounterBattle && !bossFightStarted && !wifeUnit.IsDead())
+            {
+                target = wifeUnit;
+            }
+            else
+            {
+                SetBattleText(enemyUnit.unitName + " cannot find you!");
+                yield return new WaitForSeconds(1f);
+                yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
+                yield break;
+            }
+        }
+
         if (target == null)
         {
             state = BattleState.LOST;
@@ -1759,6 +2559,32 @@ public class BattleManager : MonoBehaviour
             playerUnit.isDefending = false;
             blocked = true;
             SetPlayerNormalSprite();
+        }
+        
+        // Hit chance calculation with modifiers for blind and happy gas
+        int hitChancePercent = 100;
+
+        if (enemyBlinded)
+            hitChancePercent -= 50;
+
+        if (HGActive)
+            hitChancePercent -= doctorHGDodgeBonusPercent;
+
+        int hitRoll = Random.Range(1, 101);
+        if (hitRoll > hitChancePercent)
+        {
+            SetBattleText(enemyUnit.unitName + " misses!");
+            yield return new WaitForSeconds(1f);
+
+            if (enemyBlinded)
+            {
+                enemyBlindedTurnsRemaining--;
+                if (enemyBlindedTurnsRemaining <= 0)
+                    enemyBlinded = false;
+            }
+
+            yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
+            yield break;
         }
 
         DamageAlly(target, damage, bossMoveType, isCritical);
@@ -1819,6 +2645,21 @@ public class BattleManager : MonoBehaviour
             SetBattleText(attackName + "\nIt dealt " + damage + " damage to " + target.unitName + ".");
         }
 
+         if (enemyBlinded)
+        {
+            enemyBlindedTurnsRemaining--;
+            if (enemyBlindedTurnsRemaining <= 0)
+                enemyBlinded = false;
+        }
+        // Rudamentary reveal logic since there are no true aoe attacks;
+        if (thiefStealthed && bossMoveType == "Lunge")
+        {
+            thiefStealthed = false;
+            stealthTurnsRemaining = 0;
+            SetBattleText("The area attack reveals you!");
+            yield return new WaitForSeconds(0.75f);
+        }
+
         yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
     }
 
@@ -1837,13 +2678,17 @@ public class BattleManager : MonoBehaviour
             return;
 
         GameSession.Instance.AddXP(randomEncounterXPReward);
+        //Apply leveled stats again before healing
+        ApplyPersistentPlayerStats();
+
+        // Heal player for winning a random encounter
         GameSession.Instance.HealPlayer(randomEncounterVictoryHeal);
 
         // Push healed values back into the active battle unit so UI matches immediately
-        playerUnit.maxHealth = GameSession.Instance.playerMaxHP;
-        playerUnit.currentHealth = GameSession.Instance.playerCurrentHP;
+        ApplyPersistentPlayerStats();
 
         UpdateHPText();
+        UpdateSPUI();
     }
 
     // 
@@ -1855,10 +2700,10 @@ public class BattleManager : MonoBehaviour
         GameSession.Instance.HealPlayer(randomEncounterFleeHeal);
 
         // Push healed values back into the active battle unit so UI matches immediately
-        playerUnit.maxHealth = GameSession.Instance.playerMaxHP;
-        playerUnit.currentHealth = GameSession.Instance.playerCurrentHP;
+        ApplyPersistentPlayerStats();
 
         UpdateHPText();
+        UpdateSPUI();
     }
 
     // Smoothly animates HP bars every frame toward their target values

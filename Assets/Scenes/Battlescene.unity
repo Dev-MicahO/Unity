@@ -1041,7 +1041,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Rage
+  m_text: Skill 2
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
@@ -1922,9 +1922,9 @@ MonoBehaviour:
   enemyHPText: {fileID: 284951869}
   wifeHPText: {fileID: 657143416}
   playerSPText: {fileID: 70092627}
-  shoulderBashButtonText: {fileID: 1572681063}
-  allOutAttackButtonText: {fileID: 908208941}
-  rageButtonText: {fileID: 275195762}
+  Skill1ButtonText: {fileID: 1572681063}
+  Skill2ButtonText: {fileID: 275195762}
+  Skill3ButtonText: {fileID: 908208941}
   dialogueText: {fileID: 1090873251}
   dialogueTypeSpeed: 0.06
   playerHPBarFill: {fileID: 1337904636}
@@ -1936,9 +1936,9 @@ MonoBehaviour:
   defendButton: {fileID: 280271867}
   skillButton: {fileID: 448007870}
   fleeButton: {fileID: 2028189165}
-  shoulderBashButton: {fileID: 578546548}
-  allOutAttackButton: {fileID: 1563217680}
-  rageButton: {fileID: 2014850340}
+  Skill1Button: {fileID: 578546548}
+  Skill2Button: {fileID: 2014850340}
+  Skill3Button: {fileID: 1563217680}
   backButton: {fileID: 2018052874}
   damagePopupPrefab: {fileID: 439283630530710251, guid: a76acff0f93c85e468b23157437a2370, type: 3}
   actionPanel: {fileID: 1791636264}
@@ -1957,15 +1957,44 @@ MonoBehaviour:
   playerMaxSP: 10
   playerCurrentSP: 10
   spRegenPerTurn: 2
-  shoulderBashCost: 3
-  shoulderBashMinDamage: 18
-  shoulderBashMaxDamage: 24
-  allOutAttackCost: 5
-  allOutAttackMinDamage: 28
-  allOutAttackMaxDamage: 36
-  rageCost: 4
-  rageBonusDamage: 8
-  rageDurationTurns: 2
+  warriorSkill1Cost: 3
+  warriorSkill1MinDamage: 18
+  warriorSkill1MaxDamage: 24
+  warriorSkill2Cost: 5
+  warriorSkill2MinDamage: 28
+  warriorSkill2MaxDamage: 36
+  warriorSkill3Cost: 4
+  warriorRageBonusDamage: 8
+  warriorRageDurationTurns: 2
+  mageSkill1Cost: 4
+  mageSkill1MinDamage: 30
+  mageSkill1MaxDamage: 40
+  mageSkill1SelfDamagePercent: 15
+  mageSkill2Cost: 4
+  mageSkill2MinDamage: 30
+  mageSkill2MaxDamage: 40
+  mageParalyzeChance: 30
+  mageSkill3Cost: 4
+  mageFKBonusDamage: 12
+  mageFKDurationTurns: 3
+  mageSkill3SelfDamagePercent: 20
+  mageConfusionChancePercent: 35
+  doctorSkill1Cost: 3
+  doctorSkill1HealAmount: 25
+  doctorSkill2Cost: 5
+  doctorSkill2HealAmount: 50
+  doctorSkill3Cost: 5
+  doctorHGHealPerTurn: 6
+  doctorHGDurationTurns: 3
+  doctorHGDodgeBonusPercent: 15
+  thiefSkill1Cost: 3
+  thiefBlindChancePercent: 40
+  thiefBlindDurationTurns: 2
+  thiefSkill2Cost: 4
+  thiefStealthDurationTurns: 3
+  thiefSkill3Cost: 4
+  thiefSkill3MinDamage: 18
+  thiefSkill3MaxDamage: 26
   playerCritChancePercent: 15
   playerCritMultiplier: 1.5
   enemyCritChancePercent: 10
@@ -1976,6 +2005,10 @@ MonoBehaviour:
   infectedBiteMaxDamage: 20
   agonizedLungeMinDamage: 22
   agonizedLungeMaxDamage: 30
+  randomEncounterXPReward: 25
+  randomEncounterVictoryHeal: 20
+  randomEncounterFleeHeal: 5
+  fleeSuccessChance: 0.7
   bleedDamage: 5
   bleedChancePercent: 30
   bleedDuration: 2
@@ -2015,7 +2048,7 @@ GameObject:
   - component: {fileID: 578546549}
   - component: {fileID: 578546548}
   m_Layer: 5
-  m_Name: SBButton
+  m_Name: Skill1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2087,7 +2120,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 573548064}
         m_TargetAssemblyTypeName: BattleManager, Assembly-CSharp
-        m_MethodName: OnShoulderBashButton
+        m_MethodName: OnSkill1Button
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3540,7 +3573,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: All Out Attack
+  m_text: Skill 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
@@ -4627,6 +4660,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85ea04add756ba14f8e5d4d2e221b3f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenu
+  mainMenuPanel: {fileID: 0}
+  introPanel: {fileID: 0}
+  classPanel: {fileID: 0}
 --- !u!114 &1144979915
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6193,10 +6229,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
+  m_fontSize: 68.55
   m_fontSizeBase: 36
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
@@ -6492,7 +6528,7 @@ GameObject:
   - component: {fileID: 1563217681}
   - component: {fileID: 1563217680}
   m_Layer: 5
-  m_Name: AOAButton
+  m_Name: Skill3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6564,7 +6600,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 573548064}
         m_TargetAssemblyTypeName: BattleManager, Assembly-CSharp
-        m_MethodName: OnAllOutAttackButton
+        m_MethodName: OnSkill3Button
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -6669,7 +6705,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Shoulder Bash
+  m_text: Skill 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
@@ -7804,7 +7840,7 @@ GameObject:
   - component: {fileID: 2014850341}
   - component: {fileID: 2014850340}
   m_Layer: 5
-  m_Name: RageButton
+  m_Name: Skill2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7876,7 +7912,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 573548064}
         m_TargetAssemblyTypeName: BattleManager, Assembly-CSharp
-        m_MethodName: OnRageButton
+        m_MethodName: OnSkill2Button
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
