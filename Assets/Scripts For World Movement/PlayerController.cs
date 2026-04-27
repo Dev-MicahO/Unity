@@ -6,7 +6,7 @@ using UnityEngine.Tilemaps;
 
 public class PlayerController : MonoBehaviour
 {
-    
+    private Vector2 movingInput;
     private bool isMoving = false;
     [SerializeField] float moveSpeed = 5f;
     private Rigidbody2D rb;
@@ -42,12 +42,11 @@ public class PlayerController : MonoBehaviour
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+  void Start()
     {
-        //we read in the vector value from the inputSystem
-        controls.World.Movement.performed += ctx => Move(ctx.ReadValue<Vector2>());
+        controls.World.Movement.performed += ctx => movingInput = ctx.ReadValue<Vector2>();
+        controls.World.Movement.canceled += ctx => movingInput = Vector2.zero;
     }
-
     private void TriggerRandomEncounter()
     {
         if (GameSession.Instance == null)
@@ -69,6 +68,20 @@ public class PlayerController : MonoBehaviour
         GameSession.Instance.hasReturnPosition = true;
 
         SceneChanger.Instance.LoadScene("Battlescene");
+    }
+
+    private void Update()
+    {
+        if (!isMoving)
+        {
+            Vector2 currentInput = controls.World.Movement.ReadValue<Vector2>();
+
+            if (currentInput != Vector2.zero)
+            {
+                Vector2 direction = GetCardinalDirection(currentInput);
+                Move(direction);
+            }
+        }
     }
 
     private void Move(Vector2 direction) 
@@ -116,7 +129,7 @@ public class PlayerController : MonoBehaviour
         while ((targetPosition - rb.position).sqrMagnitude > 0.001f)
         {
             //move towards final destination slowly
-            Vector2 newPos = Vector2.MoveTowards(rb.position, targetPosition, moveSpeed * Time.fixedDeltaTime);
+            Vector2 newPos = Vector2.MoveTowards(rb.position, targetPosition, moveSpeed * Time.fixedDeltaTime * 0.6f);
             //set up position on the way to final position and move towards it
             rb.MovePosition(newPos);
             //wait for physics to update stuff
@@ -140,4 +153,16 @@ public class PlayerController : MonoBehaviour
         }
         return true;
     }
+
+    private Vector2 GetCardinalDirection(Vector2 input)
+{
+    if (Mathf.Abs(input.x) > Mathf.Abs(input.y))
+    {
+        return new Vector2(Mathf.Sign(input.x), 0);
+    }
+    else
+    {
+        return new Vector2(0, Mathf.Sign(input.y));
+    }
+}
 }
