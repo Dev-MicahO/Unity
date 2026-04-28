@@ -6,6 +6,15 @@ using UnityEngine.Tilemaps;
 
 public class PlayerController : MonoBehaviour
 {
+    private Vector2 facingDirection;
+
+    [SerializeField] private SpriteRenderer spriteRenderer;
+
+    [SerializeField] private Sprite facingUp;
+    [SerializeField] private Sprite facingDown;
+    [SerializeField] private Sprite facingLeft;
+    [SerializeField] private Sprite facingRight;
+    
     private Vector2 movingInput;
     private bool isMoving = false;
     [SerializeField] float moveSpeed = 5f;
@@ -44,8 +53,10 @@ public class PlayerController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
   void Start()
     {
+        UpdateFacingDirection(Vector2.down);
         controls.World.Movement.performed += ctx => movingInput = ctx.ReadValue<Vector2>();
         controls.World.Movement.canceled += ctx => movingInput = Vector2.zero;
+        controls.World.Interact.performed += ctx => Interact();
     }
     private void TriggerRandomEncounter()
     {
@@ -84,8 +95,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void Interact()
+    {
+        Vector3 positionInFrontOfPlayer = transform.position + (Vector3)facingDirection;
+        Vector3Int frontTile = groundTileMap.WorldToCell(positionInFrontOfPlayer);
+
+        //Tiles Interaction method blah blah blah 
+    }
+
     private void Move(Vector2 direction) 
     {
+        UpdateFacingDirection(direction);
+        
         //actually move the player in a direction by transforming  or MovePosition to move the player into position
         if(CanMove(direction) && !isMoving)
         {
@@ -155,14 +176,36 @@ public class PlayerController : MonoBehaviour
     }
 
     private Vector2 GetCardinalDirection(Vector2 input)
-{
-    if (Mathf.Abs(input.x) > Mathf.Abs(input.y))
     {
-        return new Vector2(Mathf.Sign(input.x), 0);
+        if (Mathf.Abs(input.x) > Mathf.Abs(input.y))
+        {
+            return new Vector2(Mathf.Sign(input.x), 0);
+        }
+        else
+        {
+            return new Vector2(0, Mathf.Sign(input.y));
+        }
     }
-    else
+
+    private void UpdateFacingDirection(Vector2 direction)
     {
-        return new Vector2(0, Mathf.Sign(input.y));
+        facingDirection = direction;
+        
+        if(direction == Vector2.up)
+        {
+            spriteRenderer.sprite = facingUp;   
+        }
+        else if(direction == Vector2.down)
+        {
+            spriteRenderer.sprite = facingDown;
+        }
+        else if(direction == Vector2.left)
+        {
+            spriteRenderer.sprite = facingLeft;
+        }
+        else if(direction == Vector2.right)
+        {
+            spriteRenderer.sprite = facingRight;
+        }
     }
-}
 }
