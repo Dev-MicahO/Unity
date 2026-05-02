@@ -3029,6 +3029,8 @@ MonoBehaviour:
   Skill2Button: {fileID: 2014850340}
   Skill3Button: {fileID: 1563217680}
   backButton: {fileID: 2018052874}
+  skill2UnlockLevel: 3
+  skill3UnlockLevel: 5
   targetButton1: {fileID: 2020552469}
   targetButton2: {fileID: 466071129}
   targetButton3: {fileID: 863754271}
@@ -3072,7 +3074,7 @@ MonoBehaviour:
   mageSkill1Cost: 4
   mageSkill1MinDamage: 30
   mageSkill1MaxDamage: 40
-  mageSkill1SelfDamagePercent: 15
+  mageSkill1SelfDamagePercent: 4
   mageSkill2Cost: 4
   mageSkill2MinDamage: 30
   mageSkill2MaxDamage: 40
@@ -3080,19 +3082,22 @@ MonoBehaviour:
   mageSkill3Cost: 4
   mageFKBonusDamage: 12
   mageFKDurationTurns: 3
-  mageSkill3SelfDamagePercent: 20
-  mageConfusionChancePercent: 35
+  mageSkill3SelfDamagePercent: 8
+  mageConfusionChancePercent: 25
   doctorSkill1Cost: 3
-  doctorSkill1HealAmount: 25
+  doctorSkill1MinHeal: 20
+  doctorSkill1MaxHeal: 30
   doctorSkill2Cost: 5
-  doctorSkill2HealAmount: 50
+  doctorSkill2MinHeal: 40
+  doctorSkill2MaxHeal: 60
   doctorSkill3Cost: 5
   doctorHGHealPerTurn: 6
+  doctorSkill3BaseHeal: 6
   doctorHGDurationTurns: 3
-  doctorHGDodgeBonusPercent: 15
+  doctorHGDodgeBonusPercent: 25
   thiefSkill1Cost: 3
   thiefBlindChancePercent: 40
-  thiefBlindDurationTurns: 2
+  thiefBlindDurationTurns: 3
   thiefSkill2Cost: 4
   thiefStealthDurationTurns: 3
   thiefSkill3Cost: 4
@@ -3102,6 +3107,10 @@ MonoBehaviour:
   playerCritMultiplier: 1.5
   enemyCritChancePercent: 10
   enemyCritMultiplier: 1.5
+  mageCritChancePercent: 25
+  mageCritMultiplier: 2.5
+  thiefCritChancePercent: 40
+  thiefCritMultiplier: 1.75
   feralSwipeMinDamage: 8
   feralSwipeMaxDamage: 14
   infectedBiteMinDamage: 14

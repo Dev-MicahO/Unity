@@ -145,6 +145,7 @@ public class BattleManager : MonoBehaviour
     public int playerMaxSP = 10;
     public int playerCurrentSP = 10;
     public int spRegenPerTurn = 2;
+    private bool playerUsedSkillLastTurn = false;
 
     // Skills
     [Header("Player Skills")]
@@ -217,13 +218,16 @@ public class BattleManager : MonoBehaviour
     // Doctor Skills
     [Header("Doctor Skills")]
     public int doctorSkill1Cost = 3; // Patch Wounds
-    public int doctorSkill1HealAmount = 25;
+    public int doctorSkill1MinHeal = 20;
+    public int doctorSkill1MaxHeal = 30;
 
     public int doctorSkill2Cost = 5; // Field Surgery
-    public int doctorSkill2HealAmount = 50;
+    public int doctorSkill2MinHeal = 40;
+    public int doctorSkill2MaxHeal = 60;
 
     public int doctorSkill3Cost = 5; // Happy Gas
-    public int doctorHGHealPerTurn = 6;
+    public int doctorHGHealPerTurn;
+    public int doctorSkill3BaseHeal = 6;
     public int doctorHGDurationTurns = 3;
     public int doctorHGDodgeBonusPercent = 15;
     
@@ -233,7 +237,7 @@ public class BattleManager : MonoBehaviour
     public int thiefBlindChancePercent = 40;
     public int thiefBlindDurationTurns = 2;
 
-    public int thiefSkill2Cost =4; // Stealth
+    public int thiefSkill2Cost = 4; // Stealth
     public int thiefStealthDurationTurns = 3;
     
     public int thiefSkill3Cost = 4; // Sneaky Strike
@@ -247,6 +251,13 @@ public class BattleManager : MonoBehaviour
 
     public int enemyCritChancePercent = 10;
     public float enemyCritMultiplier = 1.5f;
+    // For balance purposes mage and thief should have higher crit stats
+    [Header("Class Critical Hit Bonuses")]
+    public int mageCritChancePercent = 30;
+    public float mageCritMultiplier = 2.5f;
+
+    public int thiefCritChancePercent = 40;
+    public float thiefCritMultiplier = 1.75f;
 
     // Encounter / Boss progression
     private bool zombie2Spawned = false; // Flag to track if the second zombie has been spawned
@@ -585,6 +596,36 @@ public class BattleManager : MonoBehaviour
         }
 
         return baseDamage;
+    }
+    // Gets the appropriate crit chance based on player class
+    int GetPlayerCritChance()
+    {
+        switch (GetCurrentPlayerClass())
+        {
+            case PlayerClass.Mage:
+                return mageCritChancePercent;
+
+            case PlayerClass.Thief:
+                return thiefCritChancePercent;
+
+            default:
+                return playerCritChancePercent;
+        }
+    }
+    // Gets the appropriate crit multiplier based on player class
+    float GetPlayerCritMultiplier()
+    {
+        switch (GetCurrentPlayerClass())
+        {
+            case PlayerClass.Mage:
+                return mageCritMultiplier;
+
+            case PlayerClass.Thief:
+                return thiefCritMultiplier;
+
+            default:
+                return playerCritMultiplier;
+        }
     }
 
     /* Applies damage to the enemy and triggers all hit feedback:
@@ -1641,7 +1682,7 @@ public class BattleManager : MonoBehaviour
 
             if (confusionRoll <= mageConfusionChancePercent)
             {
-                int selfHit = Mathf.Max(1, playerUnit.GetDamage() / 2);
+                int selfHit = Mathf.Max(1, playerUnit.GetDamage() / 4);
                 playerUnit.TakeDamage(selfHit);
 
                 if (isRandomEncounterBattle)
@@ -1692,7 +1733,16 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        playerCurrentSP = Mathf.Min(playerMaxSP, playerCurrentSP + spRegenPerTurn);
+        if (!playerUsedSkillLastTurn)
+        {
+            playerCurrentSP = Mathf.Min(playerMaxSP, playerCurrentSP + spRegenPerTurn);
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.75f);
+        }
+
+        playerUsedSkillLastTurn = false;
         UpdateSPUI();
 
         StartPlayerInputPhase();
@@ -1727,7 +1777,7 @@ public class BattleManager : MonoBehaviour
             //Third Part of the tutorial Explain Skills and SP
             if (tutorialStep == 2)
             {
-                SetBattleText("Tutorial: SP is required to use skills and regenerates each turn, Try opening the skills panel!");
+                SetBattleText("Tutorial: SP is required to use skills and regenerates when you don't use a skill, Try opening the skills panel!");
                 attackButton.interactable = false;
                 defendButton.interactable = false;
                 skillButton.interactable = true;
@@ -2378,7 +2428,7 @@ public class BattleManager : MonoBehaviour
             damage += mageFKBonusDamage;
         }
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageEnemy(target, damage, isCritical);
 
@@ -2472,6 +2522,8 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill1Cost))
             yield break;
+        
+        playerUsedSkillLastTurn = true;
 
         BeginPlayerAction();
 
@@ -2484,12 +2536,11 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(warriorSkill1MinDamage, warriorSkill1MaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
+        int baseDamage = playerUnit.GetDamage() + Random.Range(warriorSkill1MinDamage, warriorSkill1MaxDamage + 1);
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        int damage = ApplyPlayerDamageBonuses(baseDamage, out exploitedOpening, out rageBoosted);
+
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageEnemy(target, damage, isCritical);
         enemyStunned = true;
@@ -2522,6 +2573,8 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill2Cost))
             yield break;
+        
+        playerUsedSkillLastTurn = true;
 
         BeginPlayerAction();
 
@@ -2532,17 +2585,11 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(warriorSkill2MinDamage, warriorSkill2MaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
+        int baseDamage = playerUnit.GetDamage() + Random.Range(warriorSkill2MinDamage, warriorSkill2MaxDamage + 1);
 
-        if (PlayerFKActive)
-        {
-            damage += mageFKBonusDamage;
-        }
+        int damage = ApplyPlayerDamageBonuses(baseDamage, out exploitedOpening, out rageBoosted);
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageAllEnemies(damage, isCritical);
 
@@ -2575,7 +2622,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill3Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         playerRageActive = true;
@@ -2613,7 +2660,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill1Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         enemyUnit = target;
@@ -2665,17 +2712,16 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(mageSkill1MinDamage, mageSkill1MaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
+        int baseDamage = playerUnit.GetDamage() + Random.Range(mageSkill1MinDamage, mageSkill1MaxDamage + 1);
+
+        int damage = ApplyPlayerDamageBonuses(baseDamage, out exploitedOpening, out rageBoosted);
 
         if (PlayerFKActive)
         {
             damage += mageFKBonusDamage;
         }
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageEnemy(target, damage, isCritical);
 
@@ -2693,7 +2739,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill2Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         SetBattleText("You summon Grasp of the Abyss!");
@@ -2710,16 +2756,14 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(
-            Random.Range(mageSkill2MinDamage, mageSkill2MaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
+        int baseDamage = playerUnit.GetDamage() + Random.Range(mageSkill2MinDamage, mageSkill2MaxDamage + 1);
+
+        int damage = ApplyPlayerDamageBonuses(baseDamage, out exploitedOpening, out rageBoosted);
 
         if (PlayerFKActive)
             damage += mageFKBonusDamage;
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageAllEnemies(damage, isCritical);
 
@@ -2749,7 +2793,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill3Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         int selfDamage = Mathf.CeilToInt(playerUnit.maxHealth * (mageSkill3SelfDamagePercent / 100f));
@@ -2820,10 +2864,11 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill1Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
-        int healAmount = doctorSkill1HealAmount;
+        int baseHeal = playerUnit.GetDamage() / 2;
+        int healAmount = baseHeal + Random.Range(doctorSkill1MinHeal, doctorSkill1MaxHeal + 1);
         target.currentHealth = Mathf.Min(target.maxHealth, target.currentHealth + healAmount);
 
         if (target == playerUnit && isRandomEncounterBattle)
@@ -2859,10 +2904,11 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill2Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
-        int healAmount = doctorSkill2HealAmount;
+        int baseHeal = playerUnit.GetDamage() / 2;
+        int healAmount = baseHeal + Random.Range(doctorSkill2MinHeal, doctorSkill2MaxHeal + 1);
         target.currentHealth = Mathf.Min(target.maxHealth, target.currentHealth + healAmount);
 
         if (target == playerUnit)
@@ -2907,10 +2953,11 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill3Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         HGActive = true;
+        doctorHGHealPerTurn = (playerUnit.GetDamage() / 3) + doctorSkill3BaseHeal;
         HGTurnsRemaining = doctorHGDurationTurns;
 
         SetBattleText("Happy Gas fills the area with a healing cloud!");
@@ -2939,7 +2986,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill1Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         enemyUnit = target;
@@ -2981,7 +3028,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill2Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         thiefStealthed = true;
@@ -3013,7 +3060,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!TrySpendSP(skill3Cost))
             yield break;
-
+        playerUsedSkillLastTurn = true;
         BeginPlayerAction();
 
         enemyUnit = target;
@@ -3024,10 +3071,9 @@ public class BattleManager : MonoBehaviour
         bool rageBoosted;
         bool isCritical;
 
-        int damage = ApplyPlayerDamageBonuses(Random.Range(thiefSkill3MinDamage, thiefSkill3MaxDamage + 1),
-            out exploitedOpening,
-            out rageBoosted
-        );
+        int baseDamage = playerUnit.GetDamage() + Random.Range(thiefSkill3MinDamage, thiefSkill3MaxDamage + 1);
+
+        int damage = ApplyPlayerDamageBonuses(baseDamage,out exploitedOpening, out rageBoosted);
 
         if (thiefStealthed)
         {
@@ -3037,7 +3083,7 @@ public class BattleManager : MonoBehaviour
             thiefNextAttackDoubleDamage = false;
         }
 
-        damage = ApplyCriticalHit(damage, playerCritChancePercent, playerCritMultiplier, out isCritical);
+        damage = ApplyCriticalHit(damage, GetPlayerCritChance(), GetPlayerCritMultiplier(), out isCritical);
 
         DamageEnemy(target, damage, isCritical);
 
@@ -3272,7 +3318,6 @@ public class BattleManager : MonoBehaviour
                     enemyBlinded = false;
             }
 
-            yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
             yield break;
         }
 
@@ -3450,8 +3495,9 @@ public class BattleManager : MonoBehaviour
         {
             skipCutsceneRequested = true;
         }
-
-        if (state == BattleState.PLAYERTURN &&Keyboard.current != null && Keyboard.current.dKey.wasPressedThisFrame)
+        
+        // Debug Key For Max Damage
+        if (state == BattleState.PLAYERTURN &&Keyboard.current != null && Keyboard.current.kKey.wasPressedThisFrame)
         {
             debugMaxDamage = !debugMaxDamage;
 
@@ -3496,6 +3542,49 @@ public class BattleManager : MonoBehaviour
             }
 
             SetupRandomEncounterBattle();
+        }
+
+        // DEBUG: Instant end battle (guaranteed flee)
+        if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
+        {
+            Debug.Log("DEBUG: Force end battle");
+
+            StopAllCoroutines();
+
+            state = BattleState.FLED;
+
+            if (isRandomEncounterBattle)
+            {
+                StartCoroutine(ReturnToOverworldAfterBattle());
+            }
+            else
+            {
+                StartCoroutine(EndBattle());
+            }
+        }
+
+        // DEBUG: Give a bunch of levels
+        if (Keyboard.current != null && Keyboard.current.lKey.wasPressedThisFrame)
+        {
+            Debug.Log("DEBUG: Set player to max level");
+
+            if (GameSession.Instance != null)
+            {
+                // Give a big chunk of XP so systems that rely on XP still behave correctly
+                GameSession.Instance.AddXP(9999);
+
+                // Re-apply stats to the active battle unit
+                ApplyPersistentPlayerStats();
+
+                // Fully heal for testing
+                playerUnit.currentHealth = playerUnit.maxHealth;
+                playerCurrentSP = playerMaxSP;
+
+                UpdateHPText();
+                UpdateSPUI();
+            }
+
+            SetBattleText("DEBUG: Max level applied");
         }
 
         playerHPBarFill.fillAmount = Mathf.Lerp(playerHPBarFill.fillAmount, playerTargetHPFill, Time.deltaTime * hpBarSpeed);

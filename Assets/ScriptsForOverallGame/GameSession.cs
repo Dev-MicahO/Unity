@@ -19,7 +19,21 @@ public class GameSession : MonoBehaviour
     [Header("Persistent Player Combat Stats")]
     public int playerLevel = 1;
     public int playerXP = 0;
-    public int xpToNextLevel = 100;
+    public int maxLevel = 10;
+    private int[] xpRequiredPerLevel =
+    {
+    0,    // level 1
+    25,   // level 2
+    60,   // level 3
+    110,  // level 4
+    175,  // level 5
+    260,  // level 6
+    370,  // level 7
+    510,  // level 8
+    685,  // level 9
+    900   // level 10
+    };
+
 
     public int playerMaxHP = 100;
     public int playerCurrentHP = 100;
@@ -68,10 +82,10 @@ public class GameSession : MonoBehaviour
                 playerMinDamage = 15;
                 playerMaxDamage = 25;
 
-                hpPerLevel = 12;
+                hpPerLevel = 20;
                 spPerLevel = 2;
-                minDamagePerLevel = 2;
-                maxDamagePerLevel = 3;
+                minDamagePerLevel = 5;
+                maxDamagePerLevel = 10;
                 break;
 
             case PlayerClass.Mage:
@@ -80,10 +94,10 @@ public class GameSession : MonoBehaviour
                 playerMinDamage = 10;
                 playerMaxDamage = 18;
 
-                hpPerLevel = 8;
-                spPerLevel = 4;
-                minDamagePerLevel = 1;
-                maxDamagePerLevel = 2;
+                hpPerLevel = 12;
+                spPerLevel = 2;
+                minDamagePerLevel = 4;
+                maxDamagePerLevel = 5;
                 break;
 
             case PlayerClass.Doctor:
@@ -92,10 +106,10 @@ public class GameSession : MonoBehaviour
                 playerMinDamage = 11;
                 playerMaxDamage = 19;
 
-                hpPerLevel = 10;
+                hpPerLevel = 15;
                 spPerLevel = 3;
-                minDamagePerLevel = 1;
-                maxDamagePerLevel = 2;
+                minDamagePerLevel = 3;
+                maxDamagePerLevel = 4;
                 break;
 
             case PlayerClass.Thief:
@@ -104,17 +118,16 @@ public class GameSession : MonoBehaviour
                 playerMinDamage = 13;
                 playerMaxDamage = 22;
 
-                hpPerLevel = 9;
-                spPerLevel = 2;
-                minDamagePerLevel = 2;
-                maxDamagePerLevel = 2;
+                hpPerLevel = 13;
+                spPerLevel = 3;
+                minDamagePerLevel = 5;
+                maxDamagePerLevel = 6;
                 break;
         }
 
         playerCurrentHP = playerMaxHP;
         playerLevel = 1;
         playerXP = 0;
-        xpToNextLevel = 100;
     }
     // Grabs stats from unit to save in gamesession.
     public void InitializePlayerStatsFromUnit(Unit playerUnit)
@@ -165,16 +178,17 @@ public class GameSession : MonoBehaviour
     {
         playerXP += amount;
 
-        while (playerXP >= xpToNextLevel)
+        while (playerLevel < maxLevel && playerXP >= xpRequiredPerLevel[playerLevel])
         {
-            playerXP -= xpToNextLevel;
             LevelUp();
         }
     }
-
     // You leveled up congrats
     private void LevelUp()
     {
+        if (playerLevel >= maxLevel)
+            return;
+
         playerLevel++;
         playerMaxHP += hpPerLevel;
         playerCurrentHP = playerMaxHP;
@@ -183,7 +197,6 @@ public class GameSession : MonoBehaviour
         playerMaxDamage += maxDamagePerLevel;
 
         playerCurrentHP = playerMaxHP;
-        xpToNextLevel += 25;
 
         Debug.Log("Level up! Player is now level " + playerLevel);
     }
