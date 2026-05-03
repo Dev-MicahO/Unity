@@ -33,7 +33,20 @@ public class GameSession : MonoBehaviour
     685,  // level 9
     900   // level 10
     };
+    
+    public enum EncounterArea
+    {
+        Forest,
+        Cave,
+        City,
+    }
 
+    [Header("Encounter Area")]
+    public string currentEncounterArea = "Forest";
+    public bool IsInSafeArea()
+    {
+        return currentEncounterArea.ToLower() == "safe";
+    }
 
     public int playerMaxHP = 100;
     public int playerCurrentHP = 100;
@@ -91,37 +104,37 @@ public class GameSession : MonoBehaviour
             case PlayerClass.Mage:
                 playerMaxHP = 75;
                 playerMaxSP = 16;
-                playerMinDamage = 10;
-                playerMaxDamage = 18;
+                playerMinDamage = 15;
+                playerMaxDamage = 22;
 
-                hpPerLevel = 12;
+                hpPerLevel = 10;
                 spPerLevel = 2;
-                minDamagePerLevel = 4;
-                maxDamagePerLevel = 5;
+                minDamagePerLevel = 7;
+                maxDamagePerLevel = 9;
                 break;
 
             case PlayerClass.Doctor:
                 playerMaxHP = 90;
                 playerMaxSP = 14;
-                playerMinDamage = 11;
+                playerMinDamage = 13;
                 playerMaxDamage = 19;
 
                 hpPerLevel = 15;
                 spPerLevel = 3;
-                minDamagePerLevel = 3;
-                maxDamagePerLevel = 4;
+                minDamagePerLevel = 5;
+                maxDamagePerLevel = 7;
                 break;
 
             case PlayerClass.Thief:
                 playerMaxHP = 85;
                 playerMaxSP = 12;
-                playerMinDamage = 13;
+                playerMinDamage = 15;
                 playerMaxDamage = 22;
 
-                hpPerLevel = 13;
+                hpPerLevel = 10;
                 spPerLevel = 3;
-                minDamagePerLevel = 5;
-                maxDamagePerLevel = 6;
+                minDamagePerLevel = 6;
+                maxDamagePerLevel = 8;
                 break;
         }
 

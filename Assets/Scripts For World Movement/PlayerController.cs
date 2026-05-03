@@ -82,13 +82,22 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(SmoothMovement(targetPosition));
             // Increase the step count
             stepsSinceLastEncounter++;
-            
+
+            // Safe zones disable random encounters
+            if (GameSession.Instance != null && GameSession.Instance.IsInSafeArea())
+            {
+                amountSinceLastFight = 0f;
+                stepsSinceLastEncounter = 0;
+                return;
+            }
+
             //we will have a random encounter here in the movement for now. 
             //Later it could be added to a overhead game manager
             float random = Random.value;
             randValue = random + amountSinceLastFight;
 
-            if(randValue > .99f && !isEncounterLoading && stepsSinceLastEncounter >= encounterBufferSteps)
+
+            if (randValue > .99f && !isEncounterLoading && stepsSinceLastEncounter >= encounterBufferSteps)
             {
                 Debug.Log("Trigger fight call");
                 amountSinceLastFight = 0f;

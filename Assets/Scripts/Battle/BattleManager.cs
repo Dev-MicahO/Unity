@@ -5,6 +5,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 
+[System.Serializable]
+public class EnemyVisualData
+{
+    public string enemyName;
+    public Sprite enemySprite;
+    public Vector3 enemyScale = Vector3.one;
+}
 public class BattleManager : MonoBehaviour
 {
     public BattleState state;
@@ -276,12 +283,43 @@ public class BattleManager : MonoBehaviour
     // Random Encounter
     private bool isRandomEncounterBattle = false;
     private int currentRandomEncounterEnemyCount = 1;
-   
+
+    [Header("Random Encounter Enemy Visuals")]
+    public EnemyVisualData[] forestEnemyVisuals;
+    public EnemyVisualData[] caveEnemyVisuals;
+    public EnemyVisualData[] cityEnemyVisuals;
+
+    // Base stats for random encounters (used to apply area scaling)
+    private int zombieBaseMaxHP;
+    private int zombieBaseMinDamage;
+    private int zombieBaseMaxDamage;
+
+    private int zombie2BaseMaxHP;
+    private int zombie2BaseMinDamage;
+    private int zombie2BaseMaxDamage;
+
+    private int zombie3BaseMaxHP;
+    private int zombie3BaseMinDamage;
+    private int zombie3BaseMaxDamage;
+
     // Rewards Section
     [Header("Rewards")]
     public int randomEncounterXPReward = 25;
     public int randomEncounterVictoryHeal = 20;
     public int randomEncounterFleeHeal = 5;
+    
+    [Header("Area Encounter Scaling")]
+    public int forestXPPerEnemy = 25;
+    public int caveXPPerEnemy = 50;
+    public int cityXPPerEnemy = 90;
+
+    public float forestEnemyHealthMultiplier = 1.0f;
+    public float caveEnemyHealthMultiplier = 1.5f;
+    public float cityEnemyHealthMultiplier = 2.0f;
+
+    public float forestEnemyDamageMultiplier = 1.0f;
+    public float caveEnemyDamageMultiplier = 1.5f;
+    public float cityEnemyDamageMultiplier = 2.0f;
 
     // Flee RNG
     [Header("Flee Settings")]
@@ -442,6 +480,7 @@ public class BattleManager : MonoBehaviour
 
         // Set the first enemy to the zombie
         enemyUnit = zombieUnit;
+        StoreBaseRandomEnemyStats();
 
         // Show zombie at start, hide boss until needed
         zombieObject.SetActive(true);
@@ -1482,6 +1521,174 @@ public class BattleManager : MonoBehaviour
         state = BattleState.PLAYERTURN;
         PlayerTurn();
     }
+    // Different methods and helpers to setup different sprites/names/scales for random encounters
+    EnemyVisualData[] GetCurrentEncounterVisualSet()
+    {
+        string area = "Forest";
+
+        if (GameSession.Instance != null)
+            area = GameSession.Instance.currentEncounterArea;
+
+        area = area.ToLower();
+
+        if (area == "cave")
+            return caveEnemyVisuals;
+
+        if (area == "city")
+            return cityEnemyVisuals;
+
+        return forestEnemyVisuals;
+    }
+
+    void ApplyRandomEncounterEnemyVisuals(int enemyCount)
+    {
+        EnemyVisualData[] visualSet = GetCurrentEncounterVisualSet();
+
+        ApplyRandomVisualToEnemy(zombieObject, zombieUnit, visualSet, enemyCount, 1);
+
+        if (enemyCount >= 2)
+            ApplyRandomVisualToEnemy(zombie2Object, zombie2Unit, visualSet, enemyCount, 2);
+
+        if (enemyCount == 3)
+            ApplyRandomVisualToEnemy(zombie3Object, zombie3Unit, visualSet, enemyCount, 3);
+    }
+
+    void ApplyRandomVisualToEnemy(GameObject enemyObject, Unit enemyUnit, EnemyVisualData[] visualSet, int enemyCount, int enemyNumber)
+    {
+        if (enemyObject == null || enemyUnit == null)
+            return;
+
+        if (visualSet == null || visualSet.Length == 0)
+            return;
+
+        EnemyVisualData chosenVisual = visualSet[Random.Range(0, visualSet.Length)];
+
+        SpriteRenderer spriteRenderer = enemyObject.GetComponent<SpriteRenderer>();
+
+        if (spriteRenderer != null && chosenVisual.enemySprite != null)
+            spriteRenderer.sprite = chosenVisual.enemySprite;
+
+        enemyObject.transform.localScale = chosenVisual.enemyScale;
+
+        if (enemyCount > 1)
+            enemyUnit.unitName = chosenVisual.enemyName + " " + enemyNumber;
+        else
+            enemyUnit.unitName = chosenVisual.enemyName;
+    }
+    // Methods and helpers for scaling enemy stats based on the current area
+    string GetCurrentEncounterArea()
+    {
+        if (GameSession.Instance == null)
+            return "forest";
+
+        return GameSession.Instance.currentEncounterArea.ToLower();
+    }
+
+    float GetCurrentEnemyHealthMultiplier()
+    {
+        string area = GetCurrentEncounterArea();
+
+        if (area == "cave")
+            return caveEnemyHealthMultiplier;
+
+        if (area == "city")
+            return cityEnemyHealthMultiplier;
+
+        return forestEnemyHealthMultiplier;
+    }
+
+    float GetCurrentEnemyDamageMultiplier()
+    {
+        string area = GetCurrentEncounterArea();
+
+        if (area == "cave")
+            return caveEnemyDamageMultiplier;
+
+        if (area == "city")
+            return cityEnemyDamageMultiplier;
+
+        return forestEnemyDamageMultiplier;
+    }
+
+    int GetCurrentXPPerEnemy()
+    {
+        string area = GetCurrentEncounterArea();
+
+        if (area == "cave")
+            return caveXPPerEnemy;
+
+        if (area == "city")
+            return cityXPPerEnemy;
+
+        return forestXPPerEnemy;
+    }
+    void ApplyRandomEncounterEnemyStats()
+    {
+        float hpMultiplier = GetCurrentEnemyHealthMultiplier();
+        float damageMultiplier = GetCurrentEnemyDamageMultiplier();
+
+        ApplyScaledEnemyStats(
+            zombieUnit,
+            zombieBaseMaxHP,
+            zombieBaseMinDamage,
+            zombieBaseMaxDamage,
+            hpMultiplier,
+            damageMultiplier
+        );
+
+        ApplyScaledEnemyStats(
+            zombie2Unit,
+            zombie2BaseMaxHP,
+            zombie2BaseMinDamage,
+            zombie2BaseMaxDamage,
+            hpMultiplier,
+            damageMultiplier
+        );
+
+        ApplyScaledEnemyStats(
+            zombie3Unit,
+            zombie3BaseMaxHP,
+            zombie3BaseMinDamage,
+            zombie3BaseMaxDamage,
+            hpMultiplier,
+            damageMultiplier
+        );
+    }
+
+    void ApplyScaledEnemyStats(
+        Unit enemy,
+        int baseMaxHP,
+        int baseMinDamage,
+        int baseMaxDamage,
+        float hpMultiplier,
+        float damageMultiplier
+    )
+    {
+        if (enemy == null)
+            return;
+
+        enemy.maxHealth = Mathf.RoundToInt(baseMaxHP * hpMultiplier);
+        enemy.currentHealth = enemy.maxHealth;
+
+        enemy.minDamage = Mathf.RoundToInt(baseMinDamage * damageMultiplier);
+        enemy.maxDamage = Mathf.RoundToInt(baseMaxDamage * damageMultiplier);
+    }
+
+    // Stores the base stats of the random encounter enemies    
+    void StoreBaseRandomEnemyStats()
+    {
+        zombieBaseMaxHP = zombieUnit.maxHealth;
+        zombieBaseMinDamage = zombieUnit.minDamage;
+        zombieBaseMaxDamage = zombieUnit.maxDamage;
+
+        zombie2BaseMaxHP = zombie2Unit.maxHealth;
+        zombie2BaseMinDamage = zombie2Unit.minDamage;
+        zombie2BaseMaxDamage = zombie2Unit.maxDamage;
+
+        zombie3BaseMaxHP = zombie3Unit.maxHealth;
+        zombie3BaseMinDamage = zombie3Unit.minDamage;
+        zombie3BaseMaxDamage = zombie3Unit.maxDamage;
+    }
 
     // Method to setup a random encounter battle with just a zombie
     void SetupRandomEncounterBattle()
@@ -1503,9 +1710,12 @@ public class BattleManager : MonoBehaviour
             enemyCount = 2;     // 35%
         else
             enemyCount = 3;     // 15%
-        
+
+        ApplyRandomEncounterEnemyVisuals(enemyCount);
+        ApplyRandomEncounterEnemyStats();
+
         currentRandomEncounterEnemyCount = enemyCount;
-        Debug.Log("Starting random encounter battle");
+        Debug.Log("Starting random encounter battle in area: " + GetCurrentEncounterArea());
 
         transitionOverlay.alpha = 0f;
         transitionOverlay.blocksRaycasts = false;
@@ -1552,10 +1762,6 @@ public class BattleManager : MonoBehaviour
             if (enemySlot3 != null)
                 zombie3Object.transform.position = enemySlot3.position;
         }
-
-        zombieUnit.currentHealth = zombieUnit.maxHealth;
-        zombie2Unit.currentHealth = zombie2Unit.maxHealth;
-        zombie3Unit.currentHealth = zombie3Unit.maxHealth;
          
         if (enemySlot1 != null)
         zombieObject.transform.position = enemySlot1.position;
@@ -3447,7 +3653,7 @@ public class BattleManager : MonoBehaviour
             return;
         }
         
-        int totalXPReward = randomEncounterXPReward * currentRandomEncounterEnemyCount;
+        int totalXPReward = GetCurrentXPPerEnemy() * currentRandomEncounterEnemyCount;
         int totalHealReward = randomEncounterVictoryHeal * currentRandomEncounterEnemyCount;
 
         GameSession.Instance.AddXP(totalXPReward);
@@ -3539,6 +3745,7 @@ public class BattleManager : MonoBehaviour
             {
                 GameSession.Instance.hasPartyMember2 = true;
                 GameSession.Instance.hasPartyMember3 = true;
+                GameSession.Instance.currentEncounterArea = "Forest";
             }
 
             SetupRandomEncounterBattle();
@@ -3571,7 +3778,7 @@ public class BattleManager : MonoBehaviour
             if (GameSession.Instance != null)
             {
                 // Give a big chunk of XP so systems that rely on XP still behave correctly
-                GameSession.Instance.AddXP(9999);
+                GameSession.Instance.AddXP(1500);
 
                 // Re-apply stats to the active battle unit
                 ApplyPersistentPlayerStats();
@@ -3585,6 +3792,30 @@ public class BattleManager : MonoBehaviour
             }
 
             SetBattleText("DEBUG: Max level applied");
+        }
+
+        // DEBUG: Give a little bit of xp for testing level up mid battle
+        if (Keyboard.current != null && Keyboard.current.periodKey.wasPressedThisFrame)
+        {
+            Debug.Log("DEBUG: Give XP");
+
+            if (GameSession.Instance != null)
+            {
+                // Give a big chunk of XP so systems that rely on XP still behave correctly
+                GameSession.Instance.AddXP(50);
+
+                // Re-apply stats to the active battle unit
+                ApplyPersistentPlayerStats();
+
+                // Fully heal for testing
+                playerUnit.currentHealth = playerUnit.maxHealth;
+                playerCurrentSP = playerMaxSP;
+
+                UpdateHPText();
+                UpdateSPUI();
+            }
+
+            SetBattleText("DEBUG: 50 XP applied");
         }
 
         playerHPBarFill.fillAmount = Mathf.Lerp(playerHPBarFill.fillAmount, playerTargetHPFill, Time.deltaTime * hpBarSpeed);
@@ -3613,7 +3844,7 @@ public class BattleManager : MonoBehaviour
     }
     else if (state == BattleState.WON)
     {
-        SetBattleText("You defeated the enemies! Gained " + (randomEncounterXPReward * currentRandomEncounterEnemyCount) + " XP and recovered " + (randomEncounterVictoryHeal * currentRandomEncounterEnemyCount)  + " HP!");
+        SetBattleText("You defeated the enemies! Gained " + (GetCurrentXPPerEnemy() * currentRandomEncounterEnemyCount) + " XP and recovered " + (randomEncounterVictoryHeal * currentRandomEncounterEnemyCount)  + " HP!");
     }
     else if (state == BattleState.LOST)
     {
@@ -3651,21 +3882,66 @@ public class BattleManager : MonoBehaviour
     IEnumerator EndBattle()
     {
         SetActionButtonsInteractable(false);
-        
+
+        bool tutorialCompleted = false;
+
+        if (GameSession.Instance != null)
+            tutorialCompleted = GameSession.Instance.tutorialBattleCompleted;
+
+        // Only go to death scene after tutorial is completed
+        if (state == BattleState.LOST && tutorialCompleted)
+        {
+            SetBattleText("You were defeated...");
+            yield return new WaitForSeconds(2f);
+
+            if (GameSession.Instance != null)
+            {
+                GameSession.Instance.isRandomEncounter = false;
+            }
+
+            SceneChanger.Instance.LoadScene("death");
+            yield break;
+        }
+
         // Random Encounter End logic
         if (isRandomEncounterBattle)
         {
             yield return StartCoroutine(ReturnToOverworldAfterBattle());
             yield break;
         }
-        
-        
-        // Set Text based on State
-        if (state == BattleState.WON) SetBattleText("You won the battle!");
-        else if (state == BattleState.LOST) SetBattleText("You were defeated!");
-        else if (state == BattleState.FLED) SetBattleText("You fled from battle!");
+
+        if (state == BattleState.WON)
+        {
+            SetBattleText("You won the battle!");
+
+            // Tutorial battle is completed after winning the story/tutorial fight
+            if (!isRandomEncounterBattle && GameSession.Instance != null)
+            {
+                GameSession.Instance.tutorialBattleCompleted = true;
+                GameSession.Instance.isRandomEncounter = false;
+
+                Debug.Log("Tutorial battle completed.");
+            }
+        }
+        else if (state == BattleState.LOST)
+        {
+            SetBattleText("You were defeated!");
+        }
+        else if (state == BattleState.FLED)
+        {   
+            // Tutorial battle is completed after winning the story/tutorial fight
+            if (!isRandomEncounterBattle && GameSession.Instance != null)
+            {
+                GameSession.Instance.tutorialBattleCompleted = true;
+                GameSession.Instance.isRandomEncounter = false;
+
+                Debug.Log("Tutorial battle completed.");
+            }
+            SetBattleText("You fled from battle!");
+        }
 
         yield return new WaitForSeconds(2f);
+
         SceneChanger.Instance.LoadScene("PlayerHouse");
     }
 }

@@ -897,7 +897,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4963280289817081617, guid: 2d0f75aaa81a24846b029e8b910e9d11, type: 3}
-  m_Color: {r: 0, g: 0.84705883, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1591,8 +1591,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 404.5, y: 109}
-  m_SizeDelta: {x: 300, y: 80}
+  m_AnchoredPosition: {x: 380, y: 109}
+  m_SizeDelta: {x: 350, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &284951868
 CanvasRenderer:
@@ -1622,7 +1622,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Enemy HP: 100/100'
+  m_text: 'Glorpulous 1 HP: 100/100'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
@@ -2344,7 +2344,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4963280289817081617, guid: 2d0f75aaa81a24846b029e8b910e9d11, type: 3}
-  m_Color: {r: 0.6692072, g: 0.7169812, b: 0.1792453, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -3111,12 +3111,27 @@ MonoBehaviour:
   mageCritMultiplier: 2.5
   thiefCritChancePercent: 40
   thiefCritMultiplier: 1.75
-  feralSwipeMinDamage: 8
-  feralSwipeMaxDamage: 14
-  infectedBiteMinDamage: 14
-  infectedBiteMaxDamage: 20
-  agonizedLungeMinDamage: 22
-  agonizedLungeMaxDamage: 30
+  feralSwipeMinDamage: 10
+  feralSwipeMaxDamage: 15
+  infectedBiteMinDamage: 20
+  infectedBiteMaxDamage: 25
+  agonizedLungeMinDamage: 30
+  agonizedLungeMaxDamage: 40
+  forestEnemyVisuals:
+  - enemyName: Creature
+    enemySprite: {fileID: 7881166437498641139, guid: 895ff4bbff86b3b4fb152b7d21669f71, type: 3}
+    enemyScale: {x: 0.1355251, y: 0.1187634, z: 1}
+  caveEnemyVisuals:
+  - enemyName: Seeker
+    enemySprite: {fileID: 1302723820812287101, guid: cb7c77f10b8103c4fbf3b712f37129bf, type: 3}
+    enemyScale: {x: 0.2355251, y: 0.2187634, z: 1}
+  - enemyName: Glorpulous
+    enemySprite: {fileID: 5479186271568450577, guid: 1ee4b926bf56f0042ab8b1224a0ebe11, type: 3}
+    enemyScale: {x: 0.2355251, y: 0.2355251, z: 1}
+  cityEnemyVisuals:
+  - enemyName: Zombie
+    enemySprite: {fileID: -4963280289817081617, guid: 2d0f75aaa81a24846b029e8b910e9d11, type: 3}
+    enemyScale: {x: 0.8355251, y: 0.7187634, z: 1}
   randomEncounterXPReward: 25
   randomEncounterVictoryHeal: 20
   randomEncounterFleeHeal: 5
@@ -7328,8 +7343,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 404.5, y: 109}
-  m_SizeDelta: {x: 300, y: 80}
+  m_AnchoredPosition: {x: 380, y: 109}
+  m_SizeDelta: {x: 350, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1229866218
 MonoBehaviour:
@@ -7351,7 +7366,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Enemy HP: 100/100'
+  m_text: 'Glorpulous 2 HP: 100/100'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
@@ -9794,7 +9809,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4963280289817081617, guid: 2d0f75aaa81a24846b029e8b910e9d11, type: 3}
-  m_Color: {r: 0.105882354, g: 0.6745098, b: 0.2509804, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -10573,8 +10588,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 404.5, y: 109}
-  m_SizeDelta: {x: 300, y: 80}
+  m_AnchoredPosition: {x: 380, y: 109}
+  m_SizeDelta: {x: 350, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1983964518
 MonoBehaviour:
@@ -10596,7 +10611,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Enemy HP: 100/100'
+  m_text: 'Glorpulous 3 HP: 100/100'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
