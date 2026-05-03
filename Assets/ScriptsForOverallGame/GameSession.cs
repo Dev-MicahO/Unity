@@ -2,6 +2,9 @@ using UnityEngine;
 
 public class GameSession : MonoBehaviour
 {
+    public bool GoldenBeagle = false;
+    public bool SuspicousBrain = false;
+    
     public static GameSession Instance;
 
     [Header("Battle State")]
@@ -19,6 +22,9 @@ public class GameSession : MonoBehaviour
 
     public int playerMaxHP = 100;
     public int playerCurrentHP = 100;
+
+    public bool hasPartyMember2 = false;
+    public bool hasPartyMember3 = false;
 
     private void Awake()
     {
@@ -78,4 +84,54 @@ public class GameSession : MonoBehaviour
 
         Debug.Log("Level up! Player is now level " + playerLevel);
     }
+
+    public void setItemTrue(string itemName)
+    {
+        Debug.Log("setItemTrue called with: " + itemName);
+        if(itemName == "Golden Beagle")
+        {
+            GoldenBeagle = true;
+            Debug.Log("setItemTrue called with: " + itemName + " | Golden Beagle is: " + GoldenBeagle);
+        }
+        else if(itemName == "Suspicous Brain")
+        {
+            SuspicousBrain = true;
+            Debug.Log("setItemTrue called with: " + itemName + " | Suspicous Brain is: " + SuspicousBrain);
+
+        }
+    
+    }
+
+    public void setPartyMemberTrue(string partyMember)
+    {
+        Debug.Log("Party Member equals" + partyMember);
+        if(partyMember == "Big Bam")
+        {
+            hasPartyMember2 = true;
+        }
+        else if(partyMember == "Old Man")
+        {
+            hasPartyMember3 = true;
+        }
+
+    }
+
+    public bool getItemStatus(string itemName)
+    {
+        Debug.Log("getItemStatus called with: " + itemName);
+        if(itemName == "Golden Beagle")
+        {
+            Debug.Log("getItemStatus called with: " + itemName + " | Golden Beagle is: " + GoldenBeagle);
+            return GoldenBeagle;
+        }
+        else if(itemName == "Suspicous Brain")
+        {
+            Debug.Log("getItemStatus called with: " + itemName + " | Suspicous Brain is: " + SuspicousBrain);
+            return SuspicousBrain;
+        }
+        
+        return false;
+        
+    }
+
 }

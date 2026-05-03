@@ -40,10 +40,14 @@ public class PlayerController : MonoBehaviour
     }
 
     private void OnEnable()
-    {
-        controls.Enable();
-        rb = GetComponent<Rigidbody2D>();
-    }
+{
+    controls.Enable();
+    rb = GetComponent<Rigidbody2D>();
+
+    controls.World.Movement.performed += ctx => movingInput = ctx.ReadValue<Vector2>();
+    controls.World.Movement.canceled += ctx => movingInput = Vector2.zero;
+    controls.World.Interact.performed += ctx => Interact();
+}
 
     private void OnDisable()
     {
@@ -54,9 +58,6 @@ public class PlayerController : MonoBehaviour
   void Start()
     {
         UpdateFacingDirection(Vector2.down);
-        controls.World.Movement.performed += ctx => movingInput = ctx.ReadValue<Vector2>();
-        controls.World.Movement.canceled += ctx => movingInput = Vector2.zero;
-        controls.World.Interact.performed += ctx => Interact();
     }
     private void TriggerRandomEncounter()
     {
@@ -83,6 +84,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {   
+        
         if (!isMoving)
         {
             
@@ -98,23 +100,26 @@ public class PlayerController : MonoBehaviour
 
     private void Interact()
     {
+        Debug.Log("E PRESSED");
         Vector3 positionInFrontOfPlayer = transform.position + (Vector3)facingDirection;
-        Vector3Int frontTile = groundTileMap.WorldToCell(positionInFrontOfPlayer);
+        //Vector3Int frontTile = groundTileMap.WorldToCell(positionInFrontOfPlayer);
 
-        //Tiles Interaction method blah blah blah 
-        TileBase tile = collisionTilemap.GetTile(frontTile);
+        Collider2D hit = Physics2D.OverlapPoint(positionInFrontOfPlayer);
 
-        if(tile != null)
+        if(hit != null)
         {
-            TileInteraction(tile, frontTile);
+            IInteractable interactable = hit.GetComponent(typeof(IInteractable)) as IInteractable;
+
+            if(interactable != null && interactable.CanInteract())
+            {
+                interactable.Interact();
+                return;
+            }
         }
+        
 
     }
 
-    private void TileInteraction(TileBase tile, Vector3Int cell)
-    {
-        string tileName = tile.name;
-    }
 
     private void Move(Vector2 direction) 
     {
