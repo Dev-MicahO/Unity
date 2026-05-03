@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 public class NPC : MonoBehaviour, IInteractable
 {
+    public string uniqueIDForHash;
+    
     private GameSession GameSessionScript;
 
     private string[] activeLines; 
@@ -24,6 +26,10 @@ public class NPC : MonoBehaviour, IInteractable
     void Awake()
     {
         GameSessionScript = GameObject.Find("Gamesession")?.GetComponent<GameSession>();
+        if(GameSessionScript.destroyedObjects.Contains(uniqueIDForHash))
+        {
+            Destroy(gameObject);
+        }
     }
 
     public bool CanInteract()
@@ -134,6 +140,7 @@ public class NPC : MonoBehaviour, IInteractable
         if(GameSessionScript.getItemStatus(dialogueData.npcItem))
         {
             GameSessionScript.setPartyMemberTrue(nameText.text);
+            GameSessionScript.destroyedObjects.Add(uniqueIDForHash);
             Destroy(gameObject);
         }
     }

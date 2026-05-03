@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 public class ITEM : MonoBehaviour, IInteractable
 {
+    public string uniqueIDForHash;
+    
     private GameSession GameSessionScript;
     public NPCDialogue dialogueData;
     public GameObject dialoguePanel;
@@ -41,6 +43,10 @@ public class ITEM : MonoBehaviour, IInteractable
     void Awake()
     {
         GameSessionScript = GameObject.Find("Gamesession")?.GetComponent<GameSession>();
+        if(GameSessionScript.destroyedObjects.Contains(uniqueIDForHash))
+        {
+            Destroy(gameObject);
+        }
     }
 
     void StartDialogue()
@@ -106,6 +112,7 @@ public class ITEM : MonoBehaviour, IInteractable
 
         GameSessionScript.setItemTrue(dialogueData.npcItem);
         Debug.Log("setItemTrue called with: " + dialogueData.npcItem);
+        GameSessionScript.destroyedObjects.Add(uniqueIDForHash);
         Destroy(gameObject);
 
     }

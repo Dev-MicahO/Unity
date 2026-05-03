@@ -1,9 +1,14 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GameSession : MonoBehaviour
 {
+    public HashSet<string> destroyedObjects = new HashSet<string>();
+    
     public bool GoldenBeagle = false;
     public bool SuspicousBrain = false;
+    public bool RubyDagger = false;
+    public bool KevlarVest = false;
     
     public static GameSession Instance;
 
@@ -99,7 +104,19 @@ public class GameSession : MonoBehaviour
             Debug.Log("setItemTrue called with: " + itemName + " | Suspicous Brain is: " + SuspicousBrain);
 
         }
-    
+        else if(itemName == "Ruby Dagger")
+        {
+            RubyDagger = true;
+            Debug.Log("setItemTrue called with: " + itemName + " | Ruby Dagger is: " + RubyDagger);
+
+        }
+        else if(itemName == "Kevlar Vest")
+        {
+            KevlarVest = true;
+            playerMaxHP = playerMaxHP + 20;
+            Debug.Log("setItemTrue called with: " + itemName + " | Kevlar Vest is: " + KevlarVest);
+
+        }
     }
 
     public void setPartyMemberTrue(string partyMember)
@@ -128,6 +145,16 @@ public class GameSession : MonoBehaviour
         {
             Debug.Log("getItemStatus called with: " + itemName + " | Suspicous Brain is: " + SuspicousBrain);
             return SuspicousBrain;
+        }
+        else if(itemName == "Ruby Dagger")
+        {
+            Debug.Log("getItemStatus called with: " + itemName + " | Ruby Dagger is: " + RubyDagger);
+            return RubyDagger;
+        }
+        else if(itemName == "Kevlar Vest")
+        {
+            Debug.Log("getItemStatus called with: " + itemName + " | Kevlar Vest is: " + KevlarVest);
+            return KevlarVest;
         }
         
         return false;

@@ -6378,11 +6378,12 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'You have just entered the tunnel to the deep forest and city beyond. Unknown
-    horrors, and terrors to freeze your soul await.
+  m_text: 'You had no choice other than to take the Cat''s offer. You step through
+    the portal into the unknown. You will save your son, at any cost.
 
-    Thank you for playing the
-    Zombachusetts demo'
+
+    End of
+    Part 1'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
   m_sharedMaterial: {fileID: 9107146365869215724, guid: 16318ab820fbf95478e1d78a5201f7e7, type: 2}
