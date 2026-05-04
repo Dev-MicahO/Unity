@@ -48,8 +48,6 @@ public class Pause : MonoBehaviour
         pauseMenu.SetActive(isPaused);
         Time.timeScale = isPaused ? 0f : 1f;
 
-        Cursor.lockState = isPaused ? CursorLockMode.None : CursorLockMode.Locked;
-        Cursor.visible = isPaused;
     }
 
     // toggles the settings panel on
@@ -74,4 +72,6 @@ public class Pause : MonoBehaviour
         settingsMenu.SetActive(false);
         Time.timeScale = 1f;
     }
+
+    
 }

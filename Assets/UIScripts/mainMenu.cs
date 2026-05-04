@@ -3,14 +3,14 @@ using UnityEngine.InputSystem;
 
 public class mainMenu : MonoBehaviour
 {
-    // main menu ui panel
     public GameObject mainMenuPanel;
     public GameObject settingsPanel;
+    
+    public Animator settingsButtonAnimator;
+    public Animator backButtonAnimator;
 
-    // player controls for key inputs
     private PlayerControls controls;
 
-    // allows you to use key presses to close certain menus
     void Awake()
     {
         controls = new PlayerControls();
@@ -34,17 +34,42 @@ public class mainMenu : MonoBehaviour
         controls.Disable();
     }
 
-    // changes to the settings panel
+    private void ResetButton(Animator animator)
+    {
+        if (animator == null) return;
+
+        animator.ResetTrigger("Pressed");
+        animator.ResetTrigger("Normal");
+        animator.Play("Normal", 0, 0f);
+        animator.Update(0f);
+    }
+
     public void OpenSettings()
     {
+        ResetButton(settingsButtonAnimator);
+
         mainMenuPanel.SetActive(false);
         settingsPanel.SetActive(true);
     }
 
-    // changes to the main menu panel 
     public void CloseSettings()
     {
+        ResetButton(backButtonAnimator);
+
         settingsPanel.SetActive(false);
         mainMenuPanel.SetActive(true);
+    }
+
+    public void LoadGameButton()
+    {
+        Debug.Log("Load button pressed");
+
+        if (SaveManager.Instance == null)
+        {
+            Debug.LogWarning("No SaveManager found.");
+            return;
+        }
+
+        SaveManager.Instance.LoadGameFromMenu();
     }
 }
