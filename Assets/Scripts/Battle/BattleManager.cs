@@ -4424,17 +4424,20 @@ public class BattleManager : MonoBehaviour
         if (GameSession.Instance != null)
             tutorialCompleted = GameSession.Instance.tutorialBattleCompleted;
 
-        // Only go to death scene after tutorial is completed
-        if (state == BattleState.LOST && tutorialCompleted)
+        bool isTutorialStoryBattle = !isRandomEncounterBattle && !isScriptedBossFight;
+
+        // Only go to death scene after tutorial is completed,
+        // and never during the tutorial/story battle itself.
+        if (state == BattleState.LOST && tutorialCompleted && !isTutorialStoryBattle)
         {
             SetBattleText("You were defeated...");
             yield return new WaitForSeconds(2f);
 
-            if (GameSession.Instance != null)
-            {   
-                GameSession.Instance.isFinalBossFight = false;
-                GameSession.Instance.isRandomEncounter = false;
-            }
+        if (GameSession.Instance != null)
+        {   
+            GameSession.Instance.isFinalBossFight = false;
+            GameSession.Instance.isRandomEncounter = false;
+        }
 
             SceneChanger.Instance.LoadScene("death");
             yield break;
@@ -4475,13 +4478,13 @@ public class BattleManager : MonoBehaviour
         else if (state == BattleState.FLED)
         {   
             // Tutorial battle is completed after winning the story/tutorial fight
-            if (!isRandomEncounterBattle && GameSession.Instance != null)
-            {
-                GameSession.Instance.tutorialBattleCompleted = true;
-                GameSession.Instance.isRandomEncounter = false;
+            if (!isRandomEncounterBattle && !isScriptedBossFight && GameSession.Instance != null)
+        {
+            GameSession.Instance.tutorialBattleCompleted = true;
+            GameSession.Instance.isRandomEncounter = false;
 
-                Debug.Log("Tutorial battle completed.");
-            }
+            Debug.Log("Tutorial battle completed.");
+        }
             SetBattleText("You fled from battle!");
         }
 
