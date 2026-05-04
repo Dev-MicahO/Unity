@@ -610,6 +610,7 @@ public class BattleManager : MonoBehaviour
         // Updates HP text and sets the target fill values for the HP bars Ensures UI always reflects current HP after changes
     void UpdateHPText()
     {
+        HideDefeatedPartyMembers();
         UpdateEnemyHPUIVisibility();
         UpdatePartyMemberHPUI();
 
@@ -1735,6 +1736,8 @@ public class BattleManager : MonoBehaviour
     void DamageAlly(Unit target, int damage, string bossMoveType, bool isCritical = false)
     {
         target.TakeDamage(damage);
+
+        HideDefeatedPartyMembers();
         // Actually update HP for all sessions
         if (target == playerUnit && isRandomEncounterBattle)
         {
@@ -2871,6 +2874,29 @@ public class BattleManager : MonoBehaviour
         return possibleTargets[Random.Range(0, possibleTargets.Count)];
     }
 
+    // Pick a random target that isnt the player
+    Unit GetRandomLivingNonPlayerAlly()
+    {
+        List<Unit> possibleTargets = new List<Unit>();
+
+        if (!bossFightStarted)
+        {
+            if (wifeObject != null && wifeObject.activeSelf && wifeUnit != null && !wifeUnit.IsDead())
+                possibleTargets.Add(wifeUnit);
+        }
+
+        if (partyMember2Object != null && partyMember2Object.activeSelf && partyMember2Unit != null && !partyMember2Unit.IsDead())
+            possibleTargets.Add(partyMember2Unit);
+
+        if (partyMember3Object != null && partyMember3Object.activeSelf && partyMember3Unit != null && !partyMember3Unit.IsDead())
+            possibleTargets.Add(partyMember3Unit);
+
+        if (possibleTargets.Count == 0)
+            return null;
+
+        return possibleTargets[Random.Range(0, possibleTargets.Count)];
+    }
+
     /*
     Returns the correct damage popup position for the given ally.
     
@@ -2963,6 +2989,18 @@ public class BattleManager : MonoBehaviour
             scriptedBoss2Object.SetActive(false);
 
         UpdateHPText();
+    }
+
+    void HideDefeatedPartyMembers()
+    {
+        if (wifeUnit != null && wifeUnit.IsDead() && wifeObject != null && wifeObject.activeSelf)
+            wifeObject.SetActive(false);
+
+        if (partyMember2Unit != null && partyMember2Unit.IsDead() && partyMember2Object != null && partyMember2Object.activeSelf)
+            partyMember2Object.SetActive(false);
+
+        if (partyMember3Unit != null && partyMember3Unit.IsDead() && partyMember3Object != null && partyMember3Object.activeSelf)
+            partyMember3Object.SetActive(false);
     }
     List<Unit> GetLivingAllies()
     {
@@ -3954,15 +3992,16 @@ public class BattleManager : MonoBehaviour
         // Stealth Logic: Later when companions are added make it target the non stealthed unit.
         if (thiefStealthed && target == playerUnit)
         {
-            if (!isRandomEncounterBattle && !bossFightStarted && !wifeUnit.IsDead())
+            Unit alternateTarget = GetRandomLivingNonPlayerAlly();
+
+            if (alternateTarget != null)
             {
-                target = wifeUnit;
+                target = alternateTarget;
             }
             else
             {
                 SetBattleText(enemyUnit.unitName + " cannot find you!");
                 yield return new WaitForSeconds(1f);
-                yield return StartCoroutine(ResolvePlayerDefeatOrContinue());
                 yield break;
             }
         }
@@ -4106,6 +4145,8 @@ public class BattleManager : MonoBehaviour
                 yield break;
             }
         }
+        
+        HideDefeatedPartyMembers();
 
         if (IsPartyDefeated())
         {
