@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
 
 public class PlayerController : MonoBehaviour
@@ -25,6 +26,7 @@ public class PlayerController : MonoBehaviour
     private int stepsSinceLastEncounter = 0;
     [SerializeField] float encounterBufferSteps = 5f; // Minimum steps before an encounter can occur
     private bool isEncounterLoading = false;
+    [SerializeField] private bool randomEncountersDisabled = false;
 
     //tilemap that the player walks on
     [SerializeField] Tilemap groundTileMap;
@@ -94,8 +96,20 @@ public class PlayerController : MonoBehaviour
         SceneChanger.Instance.LoadScene("Loading");
     }
     private void Update()
-    {   
-        
+    {
+        if (Keyboard.current != null && Keyboard.current.semicolonKey.wasPressedThisFrame)
+        {
+            randomEncountersDisabled = !randomEncountersDisabled;
+
+            amountSinceLastFight = 0f;
+            stepsSinceLastEncounter = 0;
+
+            if (randomEncountersDisabled)
+                Debug.Log("DEBUG: Random encounters disabled.");
+            else
+                Debug.Log("DEBUG: Random encounters enabled.");
+        }
+
         if (!isMoving)
         {
             
@@ -152,7 +166,15 @@ public class PlayerController : MonoBehaviour
                 stepsSinceLastEncounter = 0;
                 return;
             }
-            
+
+            // Debug toggle disables random encounters
+            if (randomEncountersDisabled)
+            {
+                amountSinceLastFight = 0f;
+                stepsSinceLastEncounter = 0;
+                return;
+            }
+
             //we will have a random encounter here in the movement for now. 
             //Later it could be added to a overhead game manager
             float random = Random.value;
@@ -169,7 +191,7 @@ public class PlayerController : MonoBehaviour
             {
                 //chance of getting a encounter increases with every step
                 //a encounter is guaranteeded eventually
-                amountSinceLastFight = amountSinceLastFight + 0.01f;
+                amountSinceLastFight = amountSinceLastFight + 0.001f;
             }
 
 

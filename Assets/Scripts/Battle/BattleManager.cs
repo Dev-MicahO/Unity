@@ -369,12 +369,11 @@ public class BattleManager : MonoBehaviour
     public int bleedChancePercent = 30;
     public int bleedDuration = 2;
 
-    private bool enemyParalyzed = false;
+
     private List<Unit> stunnedEnemies = new List<Unit>();
     private List<Unit> stunResistantEnemies = new List<Unit>();
-    private int enemyParalyzedTurnsRemaining = 0;
-    private bool enemyBlinded = false;
-    private int enemyBlindedTurnsRemaining = 0;
+    private List<Unit> paralyzedEnemies = new List<Unit>();
+    private Dictionary<Unit, int> blindedEnemies = new Dictionary<Unit, int>();
 
     //Effects
     [Header("Hit Feedback")]
@@ -952,6 +951,8 @@ public class BattleManager : MonoBehaviour
 
         enemyUnit = zombie2Unit;
         ClearAllEnemyStunData();
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
         zombie2Spawned = true;
 
         RefreshBattleUIImmediate();
@@ -976,6 +977,8 @@ public class BattleManager : MonoBehaviour
 
         enemyUnit = scriptedBoss2Unit;
         ClearAllEnemyStunData();
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
         scriptedBoss2Unit.currentHealth = scriptedBoss2Unit.maxHealth;
 
         RefreshBattleUIImmediate();
@@ -1034,6 +1037,8 @@ public class BattleManager : MonoBehaviour
         bossMoveIndex = 0;
         bossDefenseLowered = false;
         ClearAllEnemyStunData();
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
 
         RefreshBattleUIImmediate();
        
@@ -1079,6 +1084,8 @@ public class BattleManager : MonoBehaviour
         bossMoveIndex = 0;
         bossDefenseLowered = false;
         ClearAllEnemyStunData();
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
 
         RefreshBattleUIImmediate();
 
@@ -1138,9 +1145,15 @@ public class BattleManager : MonoBehaviour
         yield return StartCoroutine(ShowTransitionDialogue(wifeUnit.unitName + " now stands before you. \n For the final time..", 2.5f));
         if (skipCutsceneRequested) goto SKIP;
 
-
-        yield return StartCoroutine(ShowTransitionDialogue("Your allies abandon you,\n Leaving this battle up to you.", 2.5f));
+        yield return StartCoroutine(ShowTransitionDialogue("You muster up the last bit \n of your strength. \n To finish this fight..", 2.5f));
         if (skipCutsceneRequested) goto SKIP;
+
+        if (GameSession.Instance.hasPartyMember2 == true || GameSession.Instance.hasPartyMember3 == true)
+        {
+            yield return StartCoroutine(ShowTransitionDialogue("Your allies abandon you,\n Leaving this battle up to you.", 2.5f));
+            if (skipCutsceneRequested) goto SKIP;
+        }
+
 
         dialogueText.text = "";
 
@@ -1149,13 +1162,21 @@ public class BattleManager : MonoBehaviour
         bossFightStarted = true;
         enemyUnit = bossUnit;
 
+        // Fully heal player before the final wife boss phase
+        playerUnit.currentHealth = playerUnit.maxHealth;
+
+        if (GameSession.Instance != null)
+        {
+            GameSession.Instance.SetPlayerHP(playerUnit.currentHealth);
+        }
+
         bossUnit.currentHealth = bossUnit.maxHealth;
 
         bossMoveIndex = 0;
         bossDefenseLowered = false;
         ClearAllEnemyStunData();
-        enemyParalyzed = false;
-        enemyBlinded = false;
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
 
         RefreshBattleUIImmediate();
 
@@ -1200,6 +1221,14 @@ public class BattleManager : MonoBehaviour
         wifeObject.SetActive(false);
         wifeUIObject.SetActive(false);
 
+        // Fully heal player before the final wife boss phase
+        playerUnit.currentHealth = playerUnit.maxHealth;
+
+        if (GameSession.Instance != null)
+        {
+            GameSession.Instance.SetPlayerHP(playerUnit.currentHealth);
+        }
+
         bossObject.SetActive(true);
         bossFightStarted = true;
         enemyUnit = bossUnit;
@@ -1209,8 +1238,8 @@ public class BattleManager : MonoBehaviour
         bossMoveIndex = 0;
         bossDefenseLowered = false;
         ClearAllEnemyStunData();
-        enemyParalyzed = false;
-        enemyBlinded = false;
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
 
         RefreshBattleUIImmediate();
 
@@ -1500,6 +1529,8 @@ public class BattleManager : MonoBehaviour
         }
 
         ClearAllEnemyStunData();
+        ClearAllEnemyParalyzeData();
+        ClearAllEnemyBlindData();
 
         // Reset SP
         playerCurrentSP = playerMaxSP;
@@ -2290,6 +2321,63 @@ public class BattleManager : MonoBehaviour
     {
         stunnedEnemies.Clear();
         stunResistantEnemies.Clear();
+    }
+
+    bool IsEnemyParalyzed(Unit enemy)
+    {
+        return enemy != null && paralyzedEnemies.Contains(enemy);
+    }
+
+    void ApplyParalyzeToEnemy(Unit enemy)
+    {
+        if (enemy == null)
+            return;
+
+        if (!paralyzedEnemies.Contains(enemy))
+            paralyzedEnemies.Add(enemy);
+    }
+
+    void RemoveParalyzeFromEnemy(Unit enemy)
+    {
+        if (enemy == null)
+            return;
+
+        if (paralyzedEnemies.Contains(enemy))
+            paralyzedEnemies.Remove(enemy);
+    }
+
+    void ClearAllEnemyParalyzeData()
+    {
+        paralyzedEnemies.Clear();
+    }
+
+    bool IsEnemyBlinded(Unit enemy)
+    {
+        return enemy != null && blindedEnemies.ContainsKey(enemy);
+    }
+
+    void ApplyBlindToEnemy(Unit enemy)
+    {
+        if (enemy == null)
+            return;
+
+        blindedEnemies[enemy] = thiefBlindDurationTurns;
+    }
+
+    void TickBlindOnEnemy(Unit enemy)
+    {
+        if (enemy == null || !blindedEnemies.ContainsKey(enemy))
+            return;
+
+        blindedEnemies[enemy]--;
+
+        if (blindedEnemies[enemy] <= 0)
+            blindedEnemies.Remove(enemy);
+    }
+
+    void ClearAllEnemyBlindData()
+    {
+        blindedEnemies.Clear();
     }
 
     /* Handles what happens after the player attacks:
@@ -3446,16 +3534,24 @@ public class BattleManager : MonoBehaviour
 
         DamageAllEnemies(damage, isCritical);
 
+        bool paralyzeApplied = false;
+
         int paralyzeRoll = Random.Range(1, 101);
         if (paralyzeRoll <= mageParalyzeChance)
         {
-            enemyParalyzed = true;
-            enemyParalyzedTurnsRemaining = 1;
+            List<Unit> enemies = GetLivingEnemies();
+
+            foreach (Unit enemy in enemies)
+            {
+                ApplyParalyzeToEnemy(enemy);
+            }
+
+            paralyzeApplied = true;
         }
 
         bossDefenseLowered = true;
 
-        if (enemyParalyzed)
+        if (paralyzeApplied)
             SetBattleText("Grasp of the Abyss hits all enemies for " + damage + " damage and paralyzes them!");
         else
             SetBattleText("Grasp of the Abyss hits all enemies for " + damage + " damage and lowers their defenses!");
@@ -3687,16 +3783,15 @@ public class BattleManager : MonoBehaviour
 
         if (blindRoll <= thiefBlindChancePercent)
         {
-            enemyBlinded = true;
-            enemyBlindedTurnsRemaining = thiefBlindDurationTurns;
+            ApplyBlindToEnemy(target);
             SetBattleText("Pocket Sand blinds " + target.unitName + "!");
         }
         else
         {
             SetBattleText("Pocket Sand hits " + target.unitName + ", but they fight through it!");
         }
-	
- 	    //Advance Tutorial if player uses Pocket Sand for the first time in the tutorial
+
+        //Advance Tutorial if player uses Pocket Sand for the first time in the tutorial
         if (!isRandomEncounterBattle && !bossFightStarted && enemyUnit == zombieUnit && tutorialStep == 2)
         {
             tutorialStep = 3;
@@ -3944,16 +4039,13 @@ public class BattleManager : MonoBehaviour
     {
         state = BattleState.BUSY;
 
-         if (enemyParalyzed)
+        if (IsEnemyParalyzed(enemyUnit))
         {
+            RemoveParalyzeFromEnemy(enemyUnit);
+
             SetBattleText(enemyUnit.unitName + " is paralyzed and cannot move!");
             yield return new WaitForSeconds(1f);
 
-            enemyParalyzedTurnsRemaining--;
-            if (enemyParalyzedTurnsRemaining <= 0)
-                enemyParalyzed = false;
-
-            StartNextAllyPhase();
             yield break;
         }
 
@@ -4024,28 +4116,24 @@ public class BattleManager : MonoBehaviour
         // Hit chance calculation with modifiers for blind and happy gas
         int hitChancePercent = 100;
 
-        if (enemyBlinded)
+        if (IsEnemyBlinded(enemyUnit))
             hitChancePercent -= 50;
 
         if (HGActive)
             hitChancePercent -= doctorHGDodgeBonusPercent;
 
         int hitRoll = Random.Range(1, 101);
+
         if (hitRoll > hitChancePercent)
         {
             SetBattleText(enemyUnit.unitName + " misses!");
             yield return new WaitForSeconds(1f);
 
-            if (enemyBlinded)
-            {
-                enemyBlindedTurnsRemaining--;
-                if (enemyBlindedTurnsRemaining <= 0)
-                    enemyBlinded = false;
-            }
+            if (IsEnemyBlinded(enemyUnit))
+                TickBlindOnEnemy(enemyUnit);
 
             yield break;
         }
-
         DamageAlly(target, damage, bossMoveType, isCritical);
 
         if (blocked)
@@ -4104,12 +4192,9 @@ public class BattleManager : MonoBehaviour
             SetBattleText(attackName + "\nIt dealt " + damage + " damage to " + target.unitName + ".");
         }
 
-         if (enemyBlinded)
-        {
-            enemyBlindedTurnsRemaining--;
-            if (enemyBlindedTurnsRemaining <= 0)
-                enemyBlinded = false;
-        }
+        if (IsEnemyBlinded(enemyUnit))
+            TickBlindOnEnemy(enemyUnit);
+
         // Rudamentary reveal logic since there are no true aoe attacks from enemies;
         if (thiefStealthed && bossMoveType == "Lunge")
         {
