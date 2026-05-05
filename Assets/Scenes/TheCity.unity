@@ -4582,6 +4582,7 @@ MonoBehaviour:
   facingRight: {fileID: 3219424481828575216, guid: 7d638d85f3059754a95a414fce074134, type: 3}
   moveSpeed: 5
   encounterBufferSteps: 5
+  randomEncountersDisabled: 0
   groundTileMap: {fileID: 1592164219}
   collisionTilemap: {fileID: 1806920869}
 --- !u!212 &1459313589
@@ -18763,6 +18764,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 64810072}
     m_Modifications:
+    - target: {fileID: 54501252750115619, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+      propertyPath: hpText
+      value: 
+      objectReference: {fileID: 1705949481}
     - target: {fileID: 672929608541969551, guid: 0db282751a1042349b175178f20f7a70, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -18859,6 +18864,22 @@ PrefabInstance:
       propertyPath: m_Name
       value: OverworldCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 3021595302365706390, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 4452274881862221218, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+      propertyPath: xpText
+      value: 
+      objectReference: {fileID: 1705949479}
+    - target: {fileID: 4452274881862221218, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+      propertyPath: levelText
+      value: 
+      objectReference: {fileID: 1705949478}
+    - target: {fileID: 4452274881862221218, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+      propertyPath: xpFillImage
+      value: 
+      objectReference: {fileID: 1705949480}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -18869,6 +18890,50 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 672929608541969551, guid: 0db282751a1042349b175178f20f7a70, type: 3}
   m_PrefabInstance: {fileID: 1705949476}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1705949478 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 785304100393447339, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+  m_PrefabInstance: {fileID: 1705949476}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+--- !u!114 &1705949479 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7875622132647153807, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+  m_PrefabInstance: {fileID: 1705949476}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+--- !u!114 &1705949480 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3551580107229959134, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+  m_PrefabInstance: {fileID: 1705949476}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+--- !u!114 &1705949481 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1609819620619704595, guid: 0db282751a1042349b175178f20f7a70, type: 3}
+  m_PrefabInstance: {fileID: 1705949476}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1 &1711362905
 GameObject:
   m_ObjectHideFlags: 0

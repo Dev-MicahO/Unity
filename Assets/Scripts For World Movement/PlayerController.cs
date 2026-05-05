@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
     private float randValue;
     private float amountSinceLastFight = 0f;
     private int stepsSinceLastEncounter = 0;
+    private bool returnPositionApplied = false; // Flag to fix sliding bug hopefully
     [SerializeField] float encounterBufferSteps = 5f; // Minimum steps before an encounter can occur
     private bool isEncounterLoading = false;
     [SerializeField] private bool randomEncountersDisabled = false;
@@ -61,6 +62,54 @@ public class PlayerController : MonoBehaviour
   void Start()
     {
         UpdateFacingDirection(Vector2.down);
+        StartCoroutine(ApplyReturnPositionAfterSceneLoad());
+    }
+
+    // Method to fix sliding bug 
+    private IEnumerator ApplyReturnPositionAfterSceneLoad()
+    {
+        // Wait so scene spawn scripts, camera scripts, and tilemap setup finish first.
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        if (GameSession.Instance == null)
+            yield break;
+
+        if (!GameSession.Instance.hasReturnPosition)
+            yield break;
+
+        returnPositionApplied = true;
+
+        Vector3 returnPosition = GameSession.Instance.returnPlayerPosition;
+        returnPosition.z = transform.position.z;
+
+        // Stop any movement state before teleporting.
+        isMoving = false;
+        movingInput = Vector2.zero;
+
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.position = returnPosition;
+        }
+
+        transform.position = returnPosition;
+
+        Physics2D.SyncTransforms();
+
+        // Clear the return flag so it only happens once.
+        GameSession.Instance.hasReturnPosition = false;
+
+        // Small safety delay before movement can resume.
+        yield return null;
+
+        returnPositionApplied = false;
+
+        Debug.Log("Returned player to battle position: " + returnPosition);
     }
     private void TriggerRandomEncounter()
     {
@@ -79,7 +128,7 @@ public class PlayerController : MonoBehaviour
         isEncounterLoading = true;
 
         GameSession.Instance.isRandomEncounter = true;
-        GameSession.Instance.returnPlayerPosition = transform.position;
+        GameSession.Instance.returnPlayerPosition = rb != null ? (Vector3)rb.position : transform.position;
         GameSession.Instance.hasReturnPosition = true;
 
         // Save the exact overworld scene we came from.
@@ -97,6 +146,9 @@ public class PlayerController : MonoBehaviour
     }
     private void Update()
     {
+        if (returnPositionApplied)
+            return;
+
         if (Keyboard.current != null && Keyboard.current.semicolonKey.wasPressedThisFrame)
         {
             randomEncountersDisabled = !randomEncountersDisabled;

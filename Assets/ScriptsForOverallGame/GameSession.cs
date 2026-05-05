@@ -43,14 +43,14 @@ public class GameSession : MonoBehaviour
     {
     0,    // level 1
     50,   // level 2
-    75,   // level 3
-    150,  // level 4
-    300,  // level 5
+    125,   // level 3
+    225,  // level 4
+    375,  // level 5
     650,  // level 6
     1200,  // level 7
     1800,  // level 8
-    2400,  // level 9
-    3000   // level 10
+    2800,  // level 9
+    4050   // level 10
     };
     
     public enum EncounterArea
@@ -304,5 +304,23 @@ public class GameSession : MonoBehaviour
         
         return false;
         
+    }
+
+    // Function to get the XP required for the current level, used for UI display.
+    public int GetXPRequiredForCurrentLevel()
+    {
+        if (playerLevel <= 1)
+            return 0;
+
+        return xpRequiredPerLevel[playerLevel - 1];
+    }
+
+    // Function to get the XP required for the next level, used for UI display.
+    public int GetXPRequiredForNextLevel()
+    {
+        if (playerLevel >= maxLevel)
+            return playerXP;
+
+        return xpRequiredPerLevel[playerLevel];
     }
 }

@@ -3094,11 +3094,17 @@ public class BattleManager : MonoBehaviour
     {
         List<Unit> allies = new List<Unit>();
 
-        if (!playerUnit.IsDead())
+        if (playerUnit != null && !playerUnit.IsDead())
             allies.Add(playerUnit);
 
-        if (!isRandomEncounterBattle && !bossFightStarted && wifeObject.activeSelf && !wifeUnit.IsDead())
+        if (wifeObject != null && wifeObject.activeSelf && wifeUnit != null && !wifeUnit.IsDead())
             allies.Add(wifeUnit);
+
+        if (partyMember2Object != null && partyMember2Object.activeSelf && partyMember2Unit != null && !partyMember2Unit.IsDead())
+            allies.Add(partyMember2Unit);
+
+        if (partyMember3Object != null && partyMember3Object.activeSelf && partyMember3Unit != null && !partyMember3Unit.IsDead())
+            allies.Add(partyMember3Unit);
 
         return allies;
     }

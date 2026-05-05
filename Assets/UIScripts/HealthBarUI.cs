@@ -1,10 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class OverworldHealthBarUI : MonoBehaviour
 {
+    [Header("HP Bar")]
     [SerializeField] private Image healthFillImage;
+    [SerializeField] private TextMeshProUGUI hpText;
 
+    [Header("Health Colors")]
     [SerializeField] private Color highHealthColor = Color.green;
     [SerializeField] private Color midHealthColor = Color.yellow;
     [SerializeField] private Color lowHealthColor = Color.red;
@@ -48,6 +52,11 @@ public class OverworldHealthBarUI : MonoBehaviour
         float healthPercent = Mathf.Clamp01(currentHP / maxHP);
 
         healthFillImage.fillAmount = healthPercent;
+
+        if (hpText != null)
+        {
+            hpText.text = "HP: " + currentHP + "/" + maxHP;
+        }
 
         if (healthPercent <= lowHealthThreshold)
         {
