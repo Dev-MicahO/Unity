@@ -8,11 +8,28 @@ using System.Collections.Generic;
 [System.Serializable]
 public class SaveData
 {
+    // Save Player Stats
     public int playerCurrentHP;
+    public int playerMaxHP;
+    public int playerMaxSP;
+    public int playerMinDamage;
+    public int playerMaxDamage;
+
+    // Save Position and Scene
     public Vector3 playerPosition;
     public string currentScene;
+
+    // Save player level and Class
     public int playerLevel;
     public int playerXP;
+    public PlayerClass selectedClass;
+
+    // Save stats from class 
+    public int hpPerLevel;
+    public int spPerLevel;
+    public int minDamagePerLevel;
+    public int maxDamagePerLevel;
+
 
     // Destroyed/interacted objects
     public List<string> destroyedObjects = new List<string>();
@@ -78,11 +95,24 @@ public class SaveManager : MonoBehaviour
         savePosition.x = Mathf.Round(savePosition.x);
         savePosition.y = Mathf.Round(savePosition.y);
 
+        // All data to save
         data.playerCurrentHP = GameSession.Instance.playerCurrentHP;
+        data.playerMaxHP = GameSession.Instance.playerMaxHP;
+        data.playerMaxSP = GameSession.Instance.playerMaxSP;
+        data.playerMinDamage = GameSession.Instance.playerMinDamage;
+        data.playerMaxDamage = GameSession.Instance.playerMaxDamage;
+
         data.playerPosition = savePosition;
         data.currentScene = SceneManager.GetActiveScene().name;
+
         data.playerLevel = GameSession.Instance.playerLevel;
         data.playerXP = GameSession.Instance.playerXP;
+        data.selectedClass = GameSession.Instance.selectedClass;
+
+        data.hpPerLevel = GameSession.Instance.hpPerLevel;
+        data.spPerLevel = GameSession.Instance.spPerLevel;
+        data.minDamagePerLevel = GameSession.Instance.minDamagePerLevel;
+        data.maxDamagePerLevel = GameSession.Instance.maxDamagePerLevel;
         data.destroyedObjects = new List<string>(GameSession.Instance.destroyedObjects);
         data.GoldenBeagle = GameSession.Instance.GoldenBeagle;
         data.SuspicousBrain = GameSession.Instance.SuspicousBrain;
@@ -92,6 +122,7 @@ public class SaveManager : MonoBehaviour
         data.hasPartyMember2 = GameSession.Instance.hasPartyMember2;
         data.hasPartyMember3 = GameSession.Instance.hasPartyMember3;
 
+        // Write to json file
         string json = JsonUtility.ToJson(data, true);
         File.WriteAllText(SavePath, json);
 
@@ -150,9 +181,27 @@ public class SaveManager : MonoBehaviour
             yield break;
         }
 
+        // Data to load
+        GameSession.Instance.selectedClass = pendingLoadData.selectedClass;
+
+        GameSession.Instance.playerMaxHP = pendingLoadData.playerMaxHP;
         GameSession.Instance.playerCurrentHP = pendingLoadData.playerCurrentHP;
+        GameSession.Instance.playerMaxSP = pendingLoadData.playerMaxSP;
+        GameSession.Instance.playerMinDamage = pendingLoadData.playerMinDamage;
+        GameSession.Instance.playerMaxDamage = pendingLoadData.playerMaxDamage;
+
         GameSession.Instance.playerLevel = pendingLoadData.playerLevel;
         GameSession.Instance.playerXP = pendingLoadData.playerXP;
+
+        GameSession.Instance.hpPerLevel = pendingLoadData.hpPerLevel;
+        GameSession.Instance.spPerLevel = pendingLoadData.spPerLevel;
+        GameSession.Instance.minDamagePerLevel = pendingLoadData.minDamagePerLevel;
+        GameSession.Instance.maxDamagePerLevel = pendingLoadData.maxDamagePerLevel;
+
+        // Safety Call to prevent loading with invalid HP values that could cause softlocks or crashes.
+        GameSession.Instance.playerCurrentHP = Mathf.Clamp(GameSession.Instance.playerCurrentHP, 0 ,GameSession.Instance.playerMaxHP);
+
+        // Items and destroyed objects
         GameSession.Instance.destroyedObjects = new HashSet<string>(pendingLoadData.destroyedObjects);
 
         GameSession.Instance.GoldenBeagle = pendingLoadData.GoldenBeagle;
@@ -160,9 +209,11 @@ public class SaveManager : MonoBehaviour
         GameSession.Instance.RubyDagger = pendingLoadData.RubyDagger;
         GameSession.Instance.KevlarVest = pendingLoadData.KevlarVest;
 
+        // Party Members
         GameSession.Instance.hasPartyMember2 = pendingLoadData.hasPartyMember2;
         GameSession.Instance.hasPartyMember3 = pendingLoadData.hasPartyMember3;
 
+        // Set Position Properly
         Vector3 loadedPosition = SnapToPlayerGrid(pendingLoadData.playerPosition);
 
         // Force safe 2D position.
